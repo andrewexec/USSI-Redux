@@ -119,11 +119,28 @@ local getscriptbytecode = global_container.getscriptbytecode -- * A lot of assum
 local base64encode = global_container.base64encode
 local base64decode = global_container.base64decode
 
-local sharedStringId = 1e15 -- 1 quadrillion, up to 9.(9) quadrillion, in theory this shouldn't ever run out and be enough for all sharedstrings ever imaginable 	-- TODO: worst case, add fallback to str randomizer once numbers run out : )
+local sharedStringId = 1e15 -- 1 quadrillion, up to 9.(9) quadrillion, in theory this shouldn't ever run out and be enough for all sharedstrings ever imaginable
+local SHARED_STRING_ID_LIMIT = 2 ^ 53
+local usedSharedStringIds
 local sharedStrings = setmetatable({}, {
 	__index = function(self, str)
-		local id = base64encode(tostring(sharedStringId)) -- tostring is only needed for built-in base64encode, Luau base64 implementations don't need it as buffers autoconvert
-		sharedStringId += 1
+		local id
+		if sharedStringId < SHARED_STRING_ID_LIMIT then
+			id = base64encode(tostring(sharedStringId)) -- tostring is only needed for built-in base64encode, Luau base64 implementations don't need it as buffers autoconvert
+			sharedStringId += 1
+		else
+			if not usedSharedStringIds then
+				usedSharedStringIds = {}
+				for _, v in next, self do
+					usedSharedStringIds[v] = true
+				end
+			end
+			local used = usedSharedStringIds
+			repeat
+				id = base64encode(math.random(1e8, 9e8) .. "" .. math.random(1e8, 9e8))
+			until not used[id]
+			used[id] = true
+		end
 
 		self[str] = id -- ? The value of the md5 attribute is a Base64-encoded key. <SharedString> type elements use this key to refer to the value of the string. The value is the text content, which is Base64-encoded. Historically, the key was the MD5 hash of the string value. However, this is not required; the key can be any value that will uniquely identify the shared string. Roblox currently uses BLAKE2b truncated to 16 bytes..
 		return id
@@ -4822,7 +4839,6 @@ local function synsaveinstance(...)
 					return "-- Not found in already decompiled ScriptCache"
 				end
 
-				-- task.wait() -- TODO Maybe remove?
 			end
 
 			local ok, result = run_with_loading("Decompiling " .. script.Name, true, nil, decomp, script)
