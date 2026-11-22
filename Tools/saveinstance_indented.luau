@@ -1,5 +1,4 @@
 --!native
--- https://discord.gg/wx4ThpAsmw
 
 local Params = {
 	RepoURL = "https://raw.githubusercontent.com/rbxlx/SomeHub/main/",
@@ -575,7 +574,7 @@ local NotScriptableFixes = {
 	BasePart = { -- TODO: Find a way to integrate this into settings
 		Color3uint8 = "Color",
 	},
-} -- For more info: https://github.com/andrewexec/USSI-Redux/blob/master/Tests/Potentially%20Missing%20Properties%20Tracker.luau
+} -- For more info: https://github.com/andrewexec/USSI-Redux/blob/main/Tools/NotScriptable-Related/Potentially%20Missing%20Properties%20Dumper/Potentially%20Missing%20Properties%20Dumper.luau
 
 do
 	-- TODO: More @ https://github.com/Dekkonot/rbx-instance-serializer/blob/master/src/API.lua#L19

@@ -1,4 +1,4 @@
-# Universal Syn Save Instance (USSI)
+# USSI Redux (Universal Syn Save Instance)
 An archive of [github@luau's project](https://web.archive.org/web/20260426045357/https://github.com/luau/UniversalSynSaveInstance) aimed at resurrecting the `saveinstance` function from the long discontinued Synapse X.
 
 ## Loadstring - [Documentation](https://github.com/andrewexec/USSI-Redux/blob/main/DOCS.md)
