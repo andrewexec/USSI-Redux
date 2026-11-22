@@ -1562,8 +1562,6 @@ local function synsaveinstance(CustomOptions)
 											value = ldecompile(instance)
 										end
 									end
-									value = "-- Saved using UniversalSynSaveInstance https://discord.gg/wx4ThpAsmw\n\n"
-										.. value
 								end
 
 								value = Descriptors.__PROTECTEDSTRING(value)

@@ -4995,8 +4995,7 @@ local function synsaveinstance(...)
 			assetSourceBlock = "--[" .. eq .. "[\n" .. recoveredSource .. "\n]" .. eq .. "]\n\n"
 		end
 
-		value = "-- Saved by UniversalSynSaveInstance (Join to Copy Games) https://discord.gg/wx4ThpAsmw\n\n"
-			.. (hasLinkedSource and "-- Original Source: https://assetdelivery.roblox.com/v1/asset/?" .. (linkedKey and string.find(
+		value = (hasLinkedSource and "-- Original Source: https://assetdelivery.roblox.com/v1/asset/?" .. (linkedKey and string.find(
 				linkedKey,
 				"%a"
 			) and "hash" or "id") .. "=" .. (linkedKey or linkedSourceRaw) .. "\n\n" or "")
