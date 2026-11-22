@@ -1,4 +1,4 @@
-title = "Universal Syn SaveInstance"
+title = "USSI Redux"
 
 [home]
 enabled = true
@@ -6,7 +6,7 @@ bannerImage = "logo.png"
 
 [docusaurus]
 favicon = "favicon.png"
-tagline = "A universal saveinstance revival. This can also be edited and used as a Roblox-Format-File writer."
+tagline = "A Universal Syn Save Instance revival. This can also be edited and used as a Roblox-Format-File writer."
 
 
 [[navbar.items]]
