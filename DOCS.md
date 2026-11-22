@@ -40,7 +40,7 @@ Saves instances with specified options.
 
 ```lua
 local Params = {
-	RepoURL = "[https://raw.githubusercontent.com/luau/UniversalSynSaveInstance/main/](https://raw.githubusercontent.com/luau/UniversalSynSaveInstance/main/)",
+	RepoURL = "[https://raw.githubusercontent.com/andrewexec/USSI-Redux/main/](https://raw.githubusercontent.com/andrewexec/USSI-Redux/main/)",
 	SSI = "saveinstance",
 }
 

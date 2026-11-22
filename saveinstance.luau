@@ -2164,8 +2164,8 @@ do
 
 	--[[
 		For more info:
-		- https://github.com/andrewexec/UniversalSynSaveInstance/blob/main/Tools/NotScriptable-Related/Potentially%20Missing%20Properties%20Dumper/Potentially%20Missing%20Properties%20Dumper.luau
-		- https://github.com/andrewexec/UniversalSynSaveInstance/blob/main/Tools/NotScriptable-Related/NotScriptable%20Dumper/NotScriptable%20Dumper.py
+		- https://github.com/andrewexec/USSI-Redux/blob/main/Tools/NotScriptable-Related/Potentially%20Missing%20Properties%20Dumper/Potentially%20Missing%20Properties%20Dumper.luau
+		- https://github.com/andrewexec/USSI-Redux/blob/main/Tools/NotScriptable-Related/NotScriptable%20Dumper/NotScriptable%20Dumper.py
 		]]
 	local NotScriptableFixes = {
 		Instance = {
@@ -3778,7 +3778,7 @@ end
 	Save the current place, one [Instance], or a group of [Instance]s. Example:
 	```lua
 	local Params = {
-		RepoURL = "https://raw.githubusercontent.com/andrewexec/UniversalSynSaveInstance/main/",
+		RepoURL = "https://raw.githubusercontent.com/andrewexec/USSI-Redux/main/",
 		SSI = "saveinstance",
 	}
 
@@ -6290,7 +6290,7 @@ local function synsaveinstance(...)
 
 				return table.concat({
 					"--[[\n",
-					"\t\tThank you for using UniversalSynSaveInstance (Join to Copy Games) https://discord.gg/wx4ThpAsmw\n\n",
+					"\t\tThank you for using USSI-Redux!\n\n",
 					recoveredNote,
 					flattenedNote,
 					ghpFailureHeader,
