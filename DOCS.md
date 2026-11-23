@@ -79,6 +79,7 @@ Structure of the main `CustomOptions` table.
 | `Decompile` | `boolean` | `true` | Enables or disables script decompilation. |
 | `scriptcache` | `boolean` | `true` | Reuses decompiled script cache to skip decompiling duplicate scripts. |
 | `DecompileTimeout` | `number` | `10` | Cancels decompilation if runtime exceeds this value (in seconds). Set to `-1` to disable timeout (unreliable). |
+| `DecompileThreads` | `number` | `1` | Decompiles this many scripts at the same time before saving. `1` decompiles one by one while saving. Higher values only help if your executor's `decompile` yields, and need `scriptcache` and `getscriptbytecode`. |
 | `DecompileJobless` | `boolean` | `false` | Includes already-decompiled code in the output without decompiling new scripts. |
 | `SaveBytecode` | `boolean` | `false` | Includes script bytecode in the output for later decompilation. |
 | `DecompileIgnore` | `{Instance \| Instance.ClassName \| [Instance.ClassName] = {Instance.Name}}` | `{TextChatService}` | Ignores matching instances and their descendants by default; set `= false` to ignore only the instance itself. Examples: `"Chat"` (by class), `Players = {"MyPlayerName"}` (by class and name), `workspace` (by reference), `[workspace] = false` (by reference without descendants). |

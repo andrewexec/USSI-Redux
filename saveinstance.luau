@@ -3712,6 +3712,7 @@ end
 --- @field Decompile boolean -- Turn the compiled script back into source code (decompile). This replaces the `Source` of each [LuaSourceContainer] with decompiled code. If this is off, `Source` says decompiling is disabled. ___Default:___ true
 --- @field SaveBytecode boolean -- If the executor supports `getscriptbytecode`, add the compiled script data (bytecode) to `Source` as a comment. You can decompile it later. This respects `DecompileIgnore`. ___Default:___ false
 --- @field DecompileTimeout number -- How many seconds one decompile call can take. If it takes longer, the script stops waiting and writes a timeout message in `Source`. Set to -1 to disable the timeout. ___Default:___ 10
+--- @field DecompileThreads number -- How many scripts to decompile at the same time before saving. 1 decompiles one by one while saving. Higher values only help if your executor's `decompile` yields, and need `scriptcache` and `getscriptbytecode`. ___Default:___ 1
 --- @field BytecodeTimeout number -- How many seconds a `getscriptbytecode` call can take. If it takes longer, the script stops waiting and skips the bytecode for that script. Set to -1 to disable the timeout. ___Default:___ 3
 --- @field DecompileIgnore {Instance | string} | {[Instance | string]: boolean | {[string]: boolean}} -- Skip decompiling matched [Instance]s and their children. `Source` becomes a short ignored message. You can pass an [Instance], a class name, or `ClassName = {Name1, Name2}`. Set an [Instance] to `false` to skip only that instance, not its children. ___Default:___ {TextChatService}
 --- @field SourceCache {[Instance]: string} | false -- Source text to use for these scripts as-is instead of decompiling them. ___Default:___ false
@@ -3875,6 +3876,7 @@ local function synsaveinstance(...)
 		CompressionLevel = 9,
 		Decompile = true,
 		DecompileTimeout = 10,
+		DecompileThreads = 1,
 		DecompileJobless = false,
 		RecoverScriptsFromAssets = true,
 		-- decomptype = "",
@@ -4364,6 +4366,7 @@ local function synsaveinstance(...)
 
 	local SharedBinaryStrings = OPTIONS.SharedBinaryStrings
 
+	local predecompile
 	local ToSaveList, ldecompile, placename, elapse_t, SaveNotCreatableWillBeEnabled, RecoveredScripts, FlattenedInfo
 
 	if OPTIONS.ReadMe then
@@ -4864,19 +4867,22 @@ local function synsaveinstance(...)
 			return "-- Decompiling is disabled"
 		end
 	elseif decompile then
-		local decomp = makeTimeoutHandler(OPTIONS.DecompileTimeout, decompile, "Decompiler timed out")
+		local mainDecomp = makeTimeoutHandler(OPTIONS.DecompileTimeout, decompile, "Decompiler timed out")
+		local inflight = {}
 
-		ldecompile = function(script)
-			-- local name = scr.ClassName .. scr.Name
+		local function decompileScript(script, decomp, bytecodeOf, quiet)
 			local bytecode
 			if ScriptCache then
 				local s
-				s, bytecode = getbytecode(script)
+				s, bytecode = bytecodeOf(script)
 				local cached
 
 				if s then
 					if not bytecode or bytecode == "" then
 						return "-- The Script is Empty"
+					end
+					while inflight[bytecode] do
+						task.wait()
 					end
 					cached = ldeccache[bytecode]
 				else
@@ -4898,7 +4904,18 @@ local function synsaveinstance(...)
 
 			end
 
-			local ok, result = run_with_loading("Decompiling " .. script.Name, true, nil, decomp, script)
+			if bytecode then
+				inflight[bytecode] = true
+			end
+			local ok, result
+			if quiet then
+				ok, result = decomp(script)
+			else
+				ok, result = run_with_loading("Decompiling " .. script.Name, true, nil, decomp, script)
+			end
+			if bytecode then
+				inflight[bytecode] = nil
+			end
 			if not result then
 				ok, result = false, "Empty Output"
 			end
@@ -4919,6 +4936,59 @@ local function synsaveinstance(...)
 			end
 
 			return output
+		end
+
+		ldecompile = function(script)
+			return decompileScript(script, mainDecomp, getbytecode)
+		end
+
+		predecompile = function(scripts)
+			local threads = OPTIONS.DecompileThreads
+			if threads <= 1 or not ScriptCache or DecompileJobless then
+				return
+			end
+
+			local queue, total, nextIndex, finished = {}, 0, 1, 0
+			for _, script in scripts do
+				if not decompileIgnoreMap[script] and isLuaSourceContainer(script) then
+					total += 1
+					queue[total] = script
+				end
+			end
+			if total == 0 then
+				return
+			end
+
+			local live = math.min(threads, total)
+			for _ = 1, live do
+				local decomp = makeTimeoutHandler(OPTIONS.DecompileTimeout, decompile, "Decompiler timed out")
+				local bytecodeOf = makeTimeoutHandler(OPTIONS.BytecodeTimeout, getscriptbytecode)
+				task.spawn(function()
+					while true do
+						local script = queue[nextIndex]
+						if not script then
+							break
+						end
+						nextIndex += 1
+						pcall(decompileScript, script, decomp, bytecodeOf, true)
+						finished += 1
+					end
+					live -= 1
+				end)
+			end
+
+			if StatusText then
+				IsLoading = true
+				LoadingText = "Decompiling"
+				ensureSpinner()
+			end
+			while live > 0 do
+				if StatusText then
+					LoadingText = "Decompiling " .. finished .. "/" .. total
+				end
+				task.wait(0.25)
+			end
+			IsLoading = false
 		end
 	else
 		ldecompile = function()
@@ -6394,6 +6464,10 @@ local function synsaveinstance(...)
 		end
 
 		local ctx = collect(allRoots)
+
+		if predecompile then
+			predecompile(ctx.ordered)
+		end
 
 		-- collect filtered and deduped; recover each extra's surviving roots.
 		for _, extra in pendingExtras do
