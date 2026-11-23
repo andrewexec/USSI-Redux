@@ -3036,16 +3036,32 @@ do
 				return instance:GetScale()
 			end,
 			WorldPivotData = function(instance)
-				local pivot = instance.WorldPivot
-				local primaryPart = instance.PrimaryPart
-				local automatic
-				if primaryPart then
-					automatic = primaryPart:GetPivot()
-				else
-					automatic = instance:GetBoundingBox()
+				local function approxEqual(a, b)
+					local ac, bc = { a:GetComponents() }, { b:GetComponents() }
+					for i = 1, 12 do
+						if math.abs(ac[i] - bc[i]) > 1e-4 then
+							return false
+						end
+					end
+					return true
 				end
 
-				if pivot == automatic then
+				local ok, pivot = pcall(index, instance, "WorldPivot")
+				if not ok then
+					return nil
+				end
+
+				local automatic
+				local primaryPart = instance.PrimaryPart
+				if primaryPart then
+					local pivotOk, result = pcall(primaryPart.GetPivot, primaryPart)
+					automatic = pivotOk and result or nil
+				elseif instance:FindFirstChildWhichIsA("BasePart", true) then					local boxOk, result = pcall(instance.GetBoundingBox, instance)
+					automatic = boxOk and result or nil
+				else
+					automatic = CFrame.identity				end
+
+				if automatic and approxEqual(pivot, automatic) then
 					return nil
 				end
 				return pivot
@@ -4045,12 +4061,13 @@ local function synsaveinstance(...)
 	end
 
 	do -- * Load Settings
+		local NilFixContainers = {}
 		local function makeNilinstanceFix(Name, ClassName, Separate)
 			return function(instance, instancePropertyOverrides)
 				local Exists
 
 				if not Separate then
-					Exists = OPTIONS.NilInstancesFixes[Name]
+					Exists = NilFixContainers[Name]
 				end
 
 				local Fix
@@ -4059,7 +4076,7 @@ local function synsaveinstance(...)
 				if DoesntExist then
 					Fix = Instance.new(ClassName)
 					if not Separate then
-						OPTIONS.NilInstancesFixes[Name] = Fix
+						NilFixContainers[Name] = Fix
 					end
 					-- Fix.Name = Name
 
@@ -4963,7 +4980,7 @@ local function synsaveinstance(...)
 		end
 		local hasLinkedSource = linkedSourceRaw ~= ""
 		if hasLinkedSource then
-			linkedKey = string.match(linkedSourceRaw, "hash=(%w+)") or string.match(linkedSourceRaw, "id=(%w+)") or string.match(linkedSourceRaw, "%w+$")
+			linkedKey = string.match(linkedSourceRaw, "hash=(%w+)") or string.match(linkedSourceRaw, "%w+$")
 			if not linkedKey then -- * We print this anyway because very important
 				warn("FAILED TO EXTRACT LINKEDSOURCE (OPEN A GITHUB ISSUE): ", instance:GetFullName(), linkedSourceRaw)
 			end
@@ -5036,7 +5053,6 @@ local function synsaveinstance(...)
 	end
 
 	local DefaultInstanceNames = { TouchTransmitter = "TouchInterest" }
-
 	local function replaceClassName(instance, InstanceName, ClassName)
 		local InstanceOverride = InstancesOverrides[instance]
 
@@ -5044,8 +5060,8 @@ local function synsaveinstance(...)
 			return InstanceOverride
 		end
 
-		if InstanceName ~= (DefaultInstanceNames[ClassName] or ClassName) then
-			InstanceOverride = { Properties = { Name = "[" .. ClassName .. "] " .. InstanceName } }
+		local DefaultName = DefaultInstanceNames[ClassName]
+		if InstanceName ~= ClassName and InstanceName ~= DefaultName then			InstanceOverride = { Properties = { Name = "[" .. ClassName .. "] " .. InstanceName } }
 			InstancesOverrides[instance] = InstanceOverride
 		end
 
