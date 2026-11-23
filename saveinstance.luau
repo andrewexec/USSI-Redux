@@ -63,7 +63,7 @@ do
 	local filename = "StreamBuffer"
 
 	StreamBuffer = loadstring(
-		game:HttpGet("https://raw.githubusercontent.com/andrewexec/USSI-Redux-Toolkit/main/" .. filename .. ".luau", true),
+		(game :: any):HttpGet("https://raw.githubusercontent.com/andrewexec/USSI-Redux-Toolkit/main/" .. filename .. ".luau", true),
 		filename
 	)()
 end
@@ -74,7 +74,7 @@ do
 
 	local finder
 	finder, global_container = loadstring(
-		game:HttpGet("https://raw.githubusercontent.com/andrewexec/USSI-Redux-Toolkit/main/" .. filename .. ".luau", true),
+		(game :: any):HttpGet("https://raw.githubusercontent.com/andrewexec/USSI-Redux-Toolkit/main/" .. filename .. ".luau", true),
 		filename
 	)()
 
@@ -3248,7 +3248,7 @@ do
 
 				local function tryFetchDump(url)
 					local ok, decoded = pcall(function()
-						local raw = game:HttpGet(url, true)
+						local raw = (game :: any):HttpGet(url, true)
 						return service.HttpService:JSONDecode(raw)
 					end)
 					return ok and decoded.Classes or nil
@@ -3278,7 +3278,7 @@ do
 
 				do
 					local o, r = pcall(
-						game.HttpGet,
+						(game :: any).HttpGet,
 						game,
 						"https://raw.githubusercontent.com/setup-rbxcdn/setup-rbxcdn.github.io/refs/heads/main/version-history/Windows/Studio64.json",
 						true
@@ -3301,7 +3301,7 @@ do
 					local function fallback_channel(channel)
 						local ok, res = pcall(function()
 							return service.HttpService:JSONDecode(
-								game:HttpGet(
+								(game :: any):HttpGet(
 									"https://clientsettingscdn.roblox.com/v2/client-version/WindowsStudio64"
 										.. (channel and "/channel/" .. channel or ""),
 									true
@@ -3435,7 +3435,7 @@ do
 			[4] = function()
 				-- Credits @MaximumADHD
 				return service.HttpService:JSONDecode(
-					game:HttpGet(
+					(game :: any):HttpGet(
 						"https://raw.githubusercontent.com/MaximumADHD/Roblox-Client-Tracker/roblox/Mini-API-Dump.json",
 						true
 					)
@@ -6619,7 +6619,7 @@ local function synsaveinstance(...)
 				end
 			end
 
-			filterNkill(debug and debug.getregistry or getreg or getregistry)
+			filterNkill(debug and (debug :: any).getregistry or getreg or getregistry)
 			filterNkill(getallthreads)
 			filterNkill(getgc)
 		end
@@ -7033,7 +7033,7 @@ local function synsaveinstance(...)
 			local rbxcrypt_encode, rbxcrypt_decode
 			pcall(function()
 				local rbxcrypt_b64 = loadstring(
-					game:HttpGet(
+					(game :: any):HttpGet(
 						"https://raw.githubusercontent.com/daily3014/rbx-algorithms/refs/heads/main/src/Encoding/Base64.luau",
 						true
 					),
@@ -7158,7 +7158,7 @@ local function synsaveinstance(...)
 			local llz4_compress
 			pcall(function()
 				local llz4 = loadstring(
-					game:HttpGet("https://raw.githubusercontent.com/RiskoZS/llz4/refs/heads/main/llz4.luau", true),
+					(game :: any):HttpGet("https://raw.githubusercontent.com/RiskoZS/llz4/refs/heads/main/llz4.luau", true),
 					"llz4"
 				)()
 				llz4_compress = llz4.compress
