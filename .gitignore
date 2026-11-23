@@ -1,4 +1,5 @@
 .vscode
 build
 docs
-test.luau
+test.*.*
+tempCodeRunnerFile.*
