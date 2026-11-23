@@ -75,7 +75,7 @@ Structure of the main `CustomOptions` table.
 | `Anonymous` | `{boolean \| table{UserId = string, Name = string}}` | `false` | **Risky:** Strips account details (`Name`, `UserId`) from the output (useful when games store them in GUIs or instances). Can corrupt substrings or number sequences that match your name or ID. Accepts a table with `UserId` and `Name` keys. |
 | `ShowStatus` | `boolean` | `true` | Displays save progress/status information. |
 | `Callback` | `function` | `false` | Sends serialized data to the provided callback function instead of writing to a file. |
-| `mode` | `string` | `"optimized"` | Valid modes: `"full"`, `"optimized"`, `"scripts"`. Use an invalid mode (such as `"invalid"`) to save only `ExtraInstances`. `"optimized"` is **not** supported with `Object`. |
+| `mode` | `string` | `"optimized"` | Valid modes: `"full"`, `"optimized"`, `"scripts"` (saves only scripts and the parents that lead to them). Use an invalid mode (such as `"invalid"`) to save only `ExtraInstances`. `"optimized"` is **not** supported with `Object`. |
 | `Decompile` | `boolean` | `true` | Enables or disables script decompilation. |
 | `scriptcache` | `boolean` | `true` | Reuses decompiled script cache to skip decompiling duplicate scripts. |
 | `DecompileTimeout` | `number` | `10` | Cancels decompilation if runtime exceeds this value (in seconds). Set to `-1` to disable timeout (unreliable). |
@@ -91,7 +91,7 @@ Structure of the main `CustomOptions` table.
 | `Object` | `Instance` | `false` | Saves as `.rbxmx` (model), or `.rbxl` if `Object` is `game`. Must be an `Instance` reference (e.g., `game.Workspace`). `"optimized"` mode is **not** supported. Setting `IsModel = false` saves the specified object as a place file instead. |
 | `IsModel` | `boolean` | `false` | Automatically becomes `true` when `Object` is set unless explicitly set to `false`. |
 | `NilInstances` | `boolean` | `false` | Saves unparented instances (`Parent == nil`). |
-| `NilInstancesFixes` | `{[Instance.ClassName] = function}` | `{Animator = function, AdPortal = function, BaseWrap = function, Attachment = function}` | Custom fix functions for nil instances. Inherited classes (such as `Bone` inheriting from `Attachment`) may be caught unless explicitly excluded with `{ClassName = false}`. |
+| `NilInstancesFixes` | `{[Instance.ClassName] = function}` | `{Animator = function, AdPortal = function, BaseWrap = function, Attachment = function, DebuggerWatch = function, PluginAction = function}` | Custom fix functions for nil instances. `DebuggerWatch` and `PluginAction` can't be parented anywhere valid, so their fixes skip them. Inherited classes (such as `Bone` inheriting from `Attachment`) may be caught unless explicitly excluded with `{ClassName = false}`. |
 | `IgnoreDefaultProperties` | `boolean` | `true` | Omits properties still set to their default values. |
 | `IgnoreNotArchivable` | `boolean` | `true` | Saves instances even when `Archivable` is `false`. |
 | `IgnorePropertiesOfNotScriptsOnScriptsMode` | `boolean` | `false` | Ignores properties on non-script instances when `mode` is `"scripts"`. |

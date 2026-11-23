@@ -3697,7 +3697,7 @@ end
 --- case-sensitive: `NilInstances`, `nilinstances`, and `nilInStaNces` are the
 --- same option. Unknown names are ignored.
 --- @within UniversalSynSaveInstance
---- @field mode string -- What to save. `optimized` saves the most important services (Workspace, Players, Lighting, ReplicatedStorage, StarterGui, and others). `full` saves everything under `game`. `scripts` saves only the top-level parts that contain a [LuaSourceContainer] (a script object). It saves the whole part, not just the script. Any other value saves only `ExtraInstances` (and `Object`, if set). If `Object` is set, `optimized` becomes `full`. ___Default:___ `optimized`
+--- @field mode string -- What to save. `optimized` saves the most important services (Workspace, Players, Lighting, ReplicatedStorage, StarterGui, and others). `full` saves everything under `game`. `scripts` saves only the objects that are, or contain, a [LuaSourceContainer] (a script object), along with the path of parents that lead to them. Objects that don't lead to a script are left out. Any other value saves only `ExtraInstances` (and `Object`, if set). If `Object` is set, `optimized` becomes `full`. ___Default:___ `optimized`
 --- @field Binary boolean -- Save a binary file (`.rbxl`/`.rbxm`) instead of an XML file (`.rbxlx`/`.rbxmx`). Binary files are smaller and load faster. If the executor cannot write binary data correctly, the script uses XML. Set the old option `XML = true` to force XML. ___Default:___ true
 --- @field CompressionMode string | boolean -- How to compress (make smaller) the binary file: `"zstd"`, `"lz4"`, or `false` for no compression. `true` means `"zstd"`. The old option `DisableCompression = true` means `false`. ___Default:___ `"zstd"`
 --- @field CompressionLevel number -- Compression level for zstd, from -7 to 22. A higher level makes a smaller file but takes longer. This is ignored for lz4 and when compression is off. ___Default:___ 9
@@ -3739,7 +3739,7 @@ end
 --- @field IgnoreNotArchivable boolean -- Save objects even when their `Archivable` property is `false`. If this is off, the script skips those objects. ___Default:___ true
 --- @field SaveNotCreatable boolean -- Save classes that Roblox says are not creatable. The script replaces them with a class it can create, using `NotCreatableFixes` (usually `Folder`). This turns on automatically with `IsolatePlayers`, `IsolateLocalPlayer`, and `NilInstances` (when `getnilinstances` exists). ___Default:___ false
 --- @field NotCreatableFixes {string} | {[string]: string | false} -- Replace a class with a class that can be created. The default replacement is `"Folder"`. A list of class names also becomes `Folder`. Built-in changes: [Player], [PlayerGui], [PlayerScripts], [TouchTransmitter], and others become `Folder`; [CloudLocalizationTable] becomes [LocalizationTable]; `Platform` becomes [Part]; `Status` becomes [Model]. Set a class to `false` to skip its replacement. ___Default:___ built-in replacements
---- @field NilInstancesFixes {[string]: ((instance: Instance, overrides: table) -> Instance?) | false} -- Where to put objects that have no parent. For example, it puts [Animator] under an [AnimationController]. Built-in fixes exist for [Animator], [AdPortal], [Attachment], [BaseWrap], and [PackageLink]. Child classes use the parent fix ([Bone]s use the Attachment fix). Set a class to `false` to turn off its fix. ___Default:___ built-in Animator/AdPortal/Attachment/BaseWrap/PackageLink fixes
+--- @field NilInstancesFixes {[string]: ((instance: Instance, overrides: table) -> Instance?) | false} -- Where to put objects that have no parent. For example, it puts [Animator] under an [AnimationController]. Built-in fixes exist for [Animator], [AdPortal], [Attachment], [BaseWrap], [PackageLink], [DebuggerWatch], and [PluginAction] (the last two have no valid parent, so they are skipped). Child classes use the parent fix ([Bone]s use the Attachment fix). Set a class to `false` to turn off its fix. ___Default:___ built-in Animator/AdPortal/Attachment/BaseWrap/PackageLink fixes
 --- @field IgnoreDefaultProperties boolean -- Skip properties that already have the default value for their class. This only affects XML output. Binary output does not use this option. ___Default:___ true
 --- @field IgnorePropertiesOfNotScriptsOnScriptsMode boolean -- Only in `scripts` mode: save properties for [LuaSourceContainer]s and skip properties for all other objects. This does nothing in other modes. ___Default:___ false
 --- @field IgnoreDefaultPlayerScripts boolean -- Skip Roblox's default player scripts (`PlayerModule`, `BubbleChat`, `ChatScript`, `PlayerScriptsLoader`, `RbxCharacterSounds`). This can stop some executors from crashing during decompile. ___Default:___ false
@@ -4094,9 +4094,12 @@ local function synsaveinstance(...)
 			end
 		end
 
-		-- TODO?:
-		-- DebuggerWatch DebuggerWatch must be a child of ScriptDebugger
-		-- PluginAction Parent of PluginAction must be Plugin or PluginMenu that created it!
+		local function dropNilInstance()
+			return nil
+		end
+
+		OPTIONS.NilInstancesFixes.DebuggerWatch = dropNilInstance
+		OPTIONS.NilInstancesFixes.PluginAction = dropNilInstance
 		OPTIONS.NilInstancesFixes.Animator =
 			makeNilinstanceFix("Animator has to be placed under Humanoid or AnimationController", "AnimationController")
 		OPTIONS.NilInstancesFixes.AdPortal = makeNilinstanceFix("AdPortal must be parented to a Part", "Part")
@@ -4608,21 +4611,39 @@ local function synsaveinstance(...)
 				end
 			end
 		elseif mode == "scripts" then
-			-- TODO: Only save paths that lead to scripts (nothing else)
-			-- Currently saves paths along with children of each tree
 			for _, top in TempRoot:GetChildren() do
-				local stack, size = { top }, 1
+				local order, parentOf, stack, size = {}, {}, { top }, 1
 				while 0 < size do
 					local instance = stack[size]
 					stack[size] = nil
 					size -= 1
-					if isLuaSourceContainer(instance) then
-						table.insert(tmp, top)
-						break
-					end
+					order[#order + 1] = instance
 					for _, child in instance:GetChildren() do
+						parentOf[child] = instance
 						size += 1
 						stack[size] = child
+					end
+				end
+
+				local hasScript = {}
+				for i = #order, 1, -1 do
+					local instance = order[i]
+					if hasScript[instance] or isLuaSourceContainer(instance) then
+						hasScript[instance] = true
+						local parent = parentOf[instance]
+						if parent then
+							hasScript[parent] = true
+						end
+					end
+				end
+
+				if hasScript[top] then
+					table.insert(tmp, top)
+					for _, instance in order do
+						local parent = parentOf[instance]
+						if parent and hasScript[parent] and not hasScript[instance] then
+							IgnoreList[instance] = true
+						end
 					end
 				end
 			end
@@ -4646,9 +4667,15 @@ local function synsaveinstance(...)
 	end
 
 	local function GetLocalPlayer()
-		return service.Players.LocalPlayer
-			or service.Players:GetPropertyChangedSignal("LocalPlayer"):Wait()
-			or service.Players.LocalPlayer
+		local Players = service.Players
+		local LocalPlayer = Players.LocalPlayer
+
+		while not LocalPlayer do
+			task.wait()
+			LocalPlayer = Players.LocalPlayer
+		end
+
+		return LocalPlayer
 	end
 
 	local function get_size_format()
@@ -4669,7 +4696,7 @@ local function synsaveinstance(...)
 			end
 		end
 
-		return Size
+		return Size or (math.floor(totalsize / 0x400 ^ 4 * 10) / 10 .. " TB")
 	end
 
 	local lastYield = os.clock()
@@ -5886,7 +5913,7 @@ local function synsaveinstance(...)
 		end
 
 		local function ReturnItem(className, instance)
-			return '<Item class="' .. className .. '" referent="' .. refs[instance] .. '"><Properties>' -- TODO: Ideally this shouldn't return <Properties> as well as the line below to close it IF  IgnorePropertiesOfNotScriptsOnScriptsMode is Enabled OR If all properties are default (reduces file size by at least 1.4%)
+			return '<Item class="' .. className .. '" referent="' .. refs[instance] .. '">'
 		end
 
 		local function save_cache()
@@ -5917,6 +5944,9 @@ local function synsaveinstance(...)
 				end
 
 				savebuffer[savebuffer_size] = ReturnItem(entry.tag, instance)
+				savebuffer_size += 1
+				savebuffer[savebuffer_size] = "<Properties>"
+				local propertiesIndex = savebuffer_size
 				savebuffer_size += 1
 
 				if entry.propsOnly then
@@ -6044,8 +6074,13 @@ local function synsaveinstance(...)
 					end
 				end
 
-				savebuffer[savebuffer_size] = "</Properties>"
-				savebuffer_size += 1
+				if savebuffer_size == propertiesIndex + 1 then
+					savebuffer_size = propertiesIndex
+					savebuffer[propertiesIndex] = nil
+				else
+					savebuffer[savebuffer_size] = "</Properties>"
+					savebuffer_size += 1
+				end
 
 				if SaveCacheInterval < savebuffer_size then
 					save_cache()

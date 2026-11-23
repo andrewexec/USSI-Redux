@@ -4,5 +4,5 @@ local Params = {
 }
 local synsaveinstance = loadstring(game:HttpGet(Params.RepoURL .. Params.SSI .. ".luau", true), Params.SSI)()
 return function(Options)
-	synsaveinstance(Options)
+	return synsaveinstance(Options)
 end
