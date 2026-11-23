@@ -104,6 +104,16 @@ local setrbxclipboard = global_container.setrbxclipboard
 
 -- local cloneref = global_container.cloneref
 local gethiddenproperty = global_container.gethiddenproperty
+if not gethiddenproperty then
+	local env = getfenv()
+	for _, name in { "getnspval", "getbspval", "getpcd" } do
+		local candidate = env[name]
+		if type(candidate) == "function" then
+			gethiddenproperty = candidate
+			break
+		end
+	end
+end
 local gethiddenproperty_fallback
 
 -- These should be universal enough
