@@ -3035,7 +3035,21 @@ do
 			ScaleFactor = function(instance)
 				return instance:GetScale()
 			end,
-			WorldPivotData = "WorldPivot", -- TODO This doesn't accurately represent whether optional type property is present or not (it's never nil), gethiddenproperty or gethiddenproperty_fallback is preferred
+			WorldPivotData = function(instance)
+				local pivot = instance.WorldPivot
+				local primaryPart = instance.PrimaryPart
+				local automatic
+				if primaryPart then
+					automatic = primaryPart:GetPivot()
+				else
+					automatic = instance:GetBoundingBox()
+				end
+
+				if pivot == automatic then
+					return nil
+				end
+				return pivot
+			end,
 		},
 		PackageLink = {
 			PackageContentSerialize = "PackageContent",
@@ -4063,16 +4077,15 @@ local function synsaveinstance(...)
 			end
 		end
 
-		-- TODO: Merge BaseWrap & Attachment & AdPortal fix (put all under MeshPart container)
 		-- TODO?:
 		-- DebuggerWatch DebuggerWatch must be a child of ScriptDebugger
 		-- PluginAction Parent of PluginAction must be Plugin or PluginMenu that created it!
 		OPTIONS.NilInstancesFixes.Animator =
 			makeNilinstanceFix("Animator has to be placed under Humanoid or AnimationController", "AnimationController")
 		OPTIONS.NilInstancesFixes.AdPortal = makeNilinstanceFix("AdPortal must be parented to a Part", "Part")
-		OPTIONS.NilInstancesFixes.Attachment =
-			makeNilinstanceFix("Attachments must be parented to a BasePart or another Attachment", "Part") -- * Bones inherit from Attachments
-		OPTIONS.NilInstancesFixes.BaseWrap = makeNilinstanceFix("BaseWrap must be parented to a MeshPart", "MeshPart")
+		local MeshPartContainerName = "Attachments & BaseWraps must be parented to a MeshPart"
+		OPTIONS.NilInstancesFixes.Attachment = makeNilinstanceFix(MeshPartContainerName, "MeshPart") -- * Bones inherit from Attachments
+		OPTIONS.NilInstancesFixes.BaseWrap = makeNilinstanceFix(MeshPartContainerName, "MeshPart")
 		OPTIONS.NilInstancesFixes.PackageLink = makeNilinstanceFix("Package already has a PackageLink", "Folder", true)
 
 		local args = table.pack(...)
@@ -4950,7 +4963,7 @@ local function synsaveinstance(...)
 		end
 		local hasLinkedSource = linkedSourceRaw ~= ""
 		if hasLinkedSource then
-			linkedKey = string.match(linkedSourceRaw, "%w+$") -- TODO: No sure if this pattern matches all possible cases. Example is: 'rbxassetid://0&hash=cd73dd2fe5e5013137231c227da3167e'
+			linkedKey = string.match(linkedSourceRaw, "hash=(%w+)") or string.match(linkedSourceRaw, "id=(%w+)") or string.match(linkedSourceRaw, "%w+$")
 			if not linkedKey then -- * We print this anyway because very important
 				warn("FAILED TO EXTRACT LINKEDSOURCE (OPEN A GITHUB ISSUE): ", instance:GetFullName(), linkedSourceRaw)
 			end
@@ -5022,6 +5035,8 @@ local function synsaveinstance(...)
 		return value
 	end
 
+	local DefaultInstanceNames = { TouchTransmitter = "TouchInterest" }
+
 	local function replaceClassName(instance, InstanceName, ClassName)
 		local InstanceOverride = InstancesOverrides[instance]
 
@@ -5029,7 +5044,7 @@ local function synsaveinstance(...)
 			return InstanceOverride
 		end
 
-		if InstanceName ~= ClassName then -- TODO Compare against default instance instead (TouchTransmitter is called TouchInterest by default)
+		if InstanceName ~= (DefaultInstanceNames[ClassName] or ClassName) then
 			InstanceOverride = { Properties = { Name = "[" .. ClassName .. "] " .. InstanceName } }
 			InstancesOverrides[instance] = InstanceOverride
 		end
