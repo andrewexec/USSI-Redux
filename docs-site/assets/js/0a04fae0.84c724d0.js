@@ -1,9 +1,9 @@
 "use strict";
 (self.webpackChunkdocs = self.webpackChunkdocs || []).push([
-  [279],
+  [442],
   {
-    4410: (s) => {
-      s.exports = JSON.parse(
+    4410: (e) => {
+      e.exports = JSON.parse(
         '{"sourceUrl":"https://github.com/andrewexec/USSI-Redux/blob/main","baseUrl":"/USSI-Redux/","classOrder":[],"apiCategories":[]}',
       );
     },

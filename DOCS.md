@@ -67,8 +67,8 @@ Structure of the main `CustomOptions` table.
 | :--- | :--- | :--- | :--- |
 | `__DEBUG_MODE` | `boolean` | `false` | Prints debug logs to the console for unusual scenarios. Recommended when reporting bugs or issues. |
 | `ReadMe` | `boolean` | `true` | Includes a readme note in the saved output. |
-| `SafeMode` | `boolean` | `true` | Kicks you before saving to keep your session safe. **Highly recommended to keep enabled.** |
-| `KillAllScripts` | `boolean` | `true` | Kills all scripts for added protection (also enabled by default via `SafeMode`). **Highly recommended to keep enabled.** |
+| `SafeMode` | `boolean` | `false` | Kicks you before saving to keep your session safe. **Highly recommended to keep enabled.** |
+| `KillAllScripts` | `boolean` | `false` | Kills all scripts for added protection (also enabled by default via `SafeMode`). **Highly recommended to keep enabled.** |
 | `BoostFPS` | `boolean` | `false` | Greatly increases FPS by disabling 3D rendering (also enabled by options such as `SafeMode`). |
 | `ShutdownWhenDone` | `boolean` | `false` | Shuts down the game after `saveinstance` finishes. |
 | `AntiIdle` | `boolean` | `true` | Prevents the 20-minute idle kick. |

@@ -1,7 +1,6 @@
 --!native
 --!optimize 2
 --!strict
---!divine-intellect
 
 local function string_find(s: string, pattern: string, init: number?): (number?, number?)
 	return string.find(s, pattern, init, true)

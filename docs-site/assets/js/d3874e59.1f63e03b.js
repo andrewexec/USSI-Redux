@@ -6,7 +6,7 @@
       (s.r(n), s.d(n, { HomepageFeatures: () => u, default: () => m }));
       var t = s(8774),
         a = s(4586),
-        r = s(5917),
+        r = s(1719),
         i = s(4164);
       s(6540);
       const l = {
@@ -75,7 +75,7 @@
                 className: l.buttons,
                 children: (0, c.jsx)(t.A, {
                   className: "button button--secondary button--lg",
-                  to: "/api",
+                  to: "/docs/intro",
                   children: "Get Started \u2192",
                 }),
               }),

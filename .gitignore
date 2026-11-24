@@ -1,5 +1,7 @@
 .vscode
 build
 docs
+!/docs/
+!/docs-site/docs/
 test.*.*
 tempCodeRunnerFile.*
