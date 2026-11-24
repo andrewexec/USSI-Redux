@@ -3835,7 +3835,7 @@ export type SaveInstanceOptions = {
 --- case-sensitive: `NilInstances`, `nilinstances`, and `nilInStaNces` are the
 --- same option. Unknown names are ignored.
 --- @within UniversalSynSaveInstance
---- @field mode string -- What to save. `optimized` saves the most important services (Workspace, Players, Lighting, ReplicatedStorage, StarterGui, and others). `full` saves everything under `game`. `scripts` saves only the objects that are, or contain, a [LuaSourceContainer] (a script object), along with the path of parents that lead to them. Objects that don't lead to a script are left out. Any other value saves only `ExtraInstances` (and `Object`, if set). If `Object` is set, `optimized` becomes `full`. ___Default:___ `optimized`
+--- @field mode string -- What to save. `optimized` saves the most important services (Workspace, Players, Lighting, ReplicatedStorage, StarterGui, and others). `full` saves everything under `game` and also turns `IgnoreDefaultProperties` off, unless you set it yourself. `scripts` saves only the objects that are, or contain, a [LuaSourceContainer] (a script object), along with the path of parents that lead to them. Objects that don't lead to a script are left out. Any other value saves only `ExtraInstances` (and `Object`, if set). If `Object` is set, `optimized` becomes `full`. ___Default:___ `optimized`
 --- @field Binary boolean -- Save a binary file (`.rbxl`/`.rbxm`) instead of an XML file (`.rbxlx`/`.rbxmx`). Binary files are smaller and load faster. If the executor cannot write binary data correctly, the script uses XML. Set the old option `XML = true` to force XML. ___Default:___ true
 --- @field CompressionMode string | boolean -- How to compress (make smaller) the binary file: `"zstd"`, `"lz4"`, or `false` for no compression. `true` means `"zstd"`. The old option `DisableCompression = true` means `false`. ___Default:___ `"zstd"`
 --- @field CompressionLevel number -- Compression level for zstd, from -7 to 22. A higher level makes a smaller file but takes longer. This is ignored for lz4 and when compression is off. ___Default:___ 9
@@ -4504,6 +4504,14 @@ local function synsaveinstance(...: any): any
 
 	if Object and SaveInstanceOptions_valid.IsModel == nil then
 		IsModel = true
+	end
+
+	-- * Modes set defaults for options the caller did not choose themselves
+	if
+		(Object == game or string.lower(tostring(OPTIONS.mode)) == "full")
+		and SaveInstanceOptions_valid.IgnoreDefaultProperties == nil
+	then
+		OPTIONS.IgnoreDefaultProperties = false -- "full" keeps every property, even defaults
 	end
 
 	local IgnoreDefaultProperties = OPTIONS.IgnoreDefaultProperties

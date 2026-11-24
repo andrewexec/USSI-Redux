@@ -37,7 +37,7 @@
 - [x] ~~Remove buffersize, savebuffer & so on for sake of performance by concatenating <Item> strings to total string then writing it to file (no extra steps like table.concat)~~ table.concat proved faster in the case of huge amount of concatenations
   - Test table.concat vs string ..= with a full buffer (this benchmark differs per usecase)
 - [x] Add Option to restart saveinstance from the point that it crashed on (perhaps by skipping) (`SkipCrashedScripts` skips the script that was mid-decompile when it crashed, `RetryCrashedScripts` resets the list)
-- [ ] Maybe modes should do more than just determining the list of instances to save, like changing IgnoreDefaultProperties to false if mode is "full" for example
+- [x] Modes now change defaults: `"full"` turns `IgnoreDefaultProperties` off unless set by the caller
 - [x] Add Lua & Luau versions instead of merged (WARNING: LUAU MIGHT BE MORE UPDATED THAN LUA VERSION, lua version exists just for the sake of old & bad tools, ask devs of your tools to support luau as its latest & greatest)
 - [x] ~~Add Support for multiple Instances to be saved as a model~~ IsModel = true & ExtraInstances
 - [x] ~~Force disable ParticleEmitters in case something like IgnorePropertiesOfNotScriptsOnScriptsMode is enabled (they stack in one place and create huge lag)~~ Not needed anymore it seems as empty FlipbookLayout breaks them which also results in no particles
