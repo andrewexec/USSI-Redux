@@ -1,4 +1,4 @@
-/*! For license information please see main.44aaad5c.js.LICENSE.txt */
+/*! For license information please see main.37f8fbde.js.LICENSE.txt */
 (self.webpackChunkdocs = self.webpackChunkdocs || []).push([
   [792],
   {
@@ -779,7 +779,7 @@
       var r = n(6540),
         a = n(4784);
       const o = JSON.parse(
-          '{"docusaurus-plugin-content-docs":{"default":{"path":"/USSI-Redux/docs","versions":[{"name":"current","label":"Next","isLast":true,"path":"/USSI-Redux/docs","mainDocId":"intro","docs":[{"id":"api","path":"/USSI-Redux/docs/api","sidebar":"defaultSidebar"},{"id":"intro","path":"/USSI-Redux/docs/intro","sidebar":"defaultSidebar"}],"draftIds":[],"sidebars":{"defaultSidebar":{"link":{"path":"/USSI-Redux/docs/intro","label":"intro"}}}}],"breadcrumbs":true}},"docusaurus-lunr-search":{"default":{"fileNames":{"searchDoc":"search-doc-1795558101571.json","lunrIndex":"lunr-index-1795558101571.json"}}}}',
+          '{"docusaurus-plugin-content-docs":{"default":{"path":"/USSI-Redux/docs","versions":[{"name":"current","label":"Next","isLast":true,"path":"/USSI-Redux/docs","mainDocId":"intro","docs":[{"id":"api","path":"/USSI-Redux/docs/api","sidebar":"defaultSidebar"},{"id":"intro","path":"/USSI-Redux/docs/intro","sidebar":"defaultSidebar"}],"draftIds":[],"sidebars":{"defaultSidebar":{"link":{"path":"/USSI-Redux/docs/intro","label":"intro"}}}}],"breadcrumbs":true}},"docusaurus-lunr-search":{"default":{"fileNames":{"searchDoc":"search-doc-1795561191056.json","lunrIndex":"lunr-index-1795561191056.json"}}}}',
         ),
         i = JSON.parse(
           '{"defaultLocale":"en","locales":["en"],"path":"i18n","currentLocale":"en","localeConfigs":{"en":{"label":"English","direction":"ltr","htmlLang":"en","calendar":"gregory","path":"en","translate":false,"url":"https://andrewexec.github.io","baseUrl":"/USSI-Redux/"}}}',
@@ -18765,10 +18765,10 @@
         organizationName: "andrewexec",
         title: "USSI Redux",
         baseUrl: "/USSI-Redux/",
-        favicon: "favicon.png",
+        favicon: "favicon.svg",
         tagline:
           "A Universal Syn Save Instance revival. This can also be edited and used as a Roblox-Format-File writer.",
-        customFields: { bannerImage: "logo.png" },
+        customFields: {},
         themeConfig: {
           prism: {
             additionalLanguages: [
@@ -18835,7 +18835,7 @@
           },
           navbar: {
             title: "USSI Redux",
-            logo: { src: "favicon.png" },
+            logo: { src: "favicon-black.svg", srcDark: "favicon.png" },
             items: [
               { type: "doc", docId: "intro", position: "left", label: "Docs" },
               { to: "/api/", label: "API", position: "left" },
@@ -18851,8 +18851,14 @@
             style: "dark",
             copyright:
               "Copyright \xa9 2026 andrewexec. Built with Moonwave and Docusaurus.",
+            links: [
+              {
+                label: "GitHub",
+                href: "https://github.com/andrewexec/USSI-Redux",
+              },
+              { label: "Getting Started", to: "/docs/intro" },
+            ],
             logo: { src: "favicon.png", width: 50, height: 50 },
-            links: [],
           },
           colorMode: {
             respectPrefersColorScheme: !0,

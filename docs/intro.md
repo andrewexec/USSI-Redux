@@ -67,7 +67,7 @@ If you set `Object`, `"optimized"` becomes `"full"`. Saving `game` as the `Objec
 `IgnoreDefaultProperties` only affects XML output. Binary saves do not use it.
 
 ```lua
--- keep every property, even defaults
+-- keep every property
 synsaveinstance({ mode = "full" })
 
 -- "full" mode, but still skip default values
@@ -96,7 +96,7 @@ synsaveinstance({
 })
 ```
 
-Functions MoonDecompiler can't rebuild with normal structure are saved as a loop over a program counter, or as a commented disassembly, and start with a comment saying why.
+Functions MoonDecompiler can't rebuild with normal structure are saved as a loop, or as a commented disassembly, and start with a comment saying why.
 
 ## Recovering from a crash
 
@@ -142,5 +142,5 @@ local options: SaveInstanceOptions = {
 
 - The [API Reference](/docs/api) lists every option with its type, default and description.
 - The [type page](/api/UniversalSynSaveInstance) documents the `SaveInstanceOptions` type and the `synsaveinstance` function.
-- The [source on GitHub](https://github.com/andrewexec/USSI-Redux) has the code, `TODO.md` and the decompiler.
+- The [source on GitHub](https://github.com/andrewexec/USSI-Redux) has the entire codebase for this project.
 - This project is based on [luau's UniversalSynSaveInstance](https://github.com/luau/UniversalSynSaveInstance) and the Roblox file format specifications. See the README for the full list of credits.

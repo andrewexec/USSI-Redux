@@ -387,7 +387,7 @@
               children: (0, i.jsx)(s.code, {
                 className: "language-lua",
                 children:
-                  '-- keep every property, even defaults\nsynsaveinstance({ mode = "full" })\n\n-- "full" mode, but still skip default values\nsynsaveinstance({ mode = "full", IgnoreDefaultProperties = true })\n',
+                  '-- keep every property\nsynsaveinstance({ mode = "full" })\n\n-- "full" mode, but still skip default values\nsynsaveinstance({ mode = "full", IgnoreDefaultProperties = true })\n',
               }),
             }),
             "\n",
@@ -574,7 +574,7 @@
             "\n",
             (0, i.jsx)(s.p, {
               children:
-                "Functions MoonDecompiler can't rebuild with normal structure are saved as a loop over a program counter, or as a commented disassembly, and start with a comment saying why.",
+                "Functions MoonDecompiler can't rebuild with normal structure are saved as a loop, or as a commented disassembly, and start with a comment saying why.",
             }),
             "\n",
             (0, i.jsx)(s.h2, {
@@ -584,7 +584,7 @@
             "\n",
             (0, i.jsx)(s.p, {
               children:
-                "Some executors crash on particular scripts during decompile. USSI Redux remembers which script was being decompiled, so you can simply run the save again.",
+                "Some executors crash on particular scripts during decompile. USSI Redux remembers which script was being decompiled, so you can run the save again.",
             }),
             "\n",
             (0, i.jsxs)(s.ol, {
@@ -708,9 +708,14 @@
                         (0, i.jsx)(s.td, {
                           children: (0, i.jsx)(s.code, { children: "false" }),
                         }),
-                        (0, i.jsx)(s.td, {
-                          children:
-                            "Kicks you before saving, which keeps you safe. Highly recommended.",
+                        (0, i.jsxs)(s.td, {
+                          children: [
+                            "Disconnects you from the game when saving starts, and turns on ",
+                            (0, i.jsx)(s.code, { children: "KillAllScripts" }),
+                            " and ",
+                            (0, i.jsx)(s.code, { children: "BoostFPS" }),
+                            " unless you set them. Highly recommended.",
+                          ],
                         }),
                       ],
                     }),
@@ -797,7 +802,7 @@
             (0, i.jsxs)(s.p, {
               children: [
                 (0, i.jsx)(s.code, { children: "saveinstance" }),
-                " does not modify game state, which helps keep it stable and compatible.",
+                " does not modify game state.",
               ],
             }),
             "\n",
@@ -866,9 +871,7 @@
                       href: "https://github.com/andrewexec/USSI-Redux",
                       children: "source on GitHub",
                     }),
-                    " has the code, ",
-                    (0, i.jsx)(s.code, { children: "TODO.md" }),
-                    " and the decompiler.",
+                    " has the entire codebase for this project.",
                   ],
                 }),
                 "\n",

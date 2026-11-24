@@ -1,0 +1,698 @@
+{
+  "searchDocs": [
+    {
+      "title": "Getting Started",
+      "type": 0,
+      "sectionRef": "#",
+      "url": "/USSI-Redux/docs/intro",
+      "content": "",
+      "keywords": "",
+      "version": "Next"
+    },
+    {
+      "title": "Load it​",
+      "type": 1,
+      "pageTitle": "Getting Started",
+      "url": "/USSI-Redux/docs/intro#load-it",
+      "content": " local Params = { RepoURL = &quot;https://raw.githubusercontent.com/andrewexec/USSI-Redux/main/&quot;, SSI = &quot;saveinstance&quot;, } local synsaveinstance = loadstring(game:HttpGet(Params.RepoURL .. Params.SSI .. &quot;.luau&quot;, true), Params.SSI)() synsaveinstance({}) -- saves with the default options   Pass a table of options to change what is saved and how:  synsaveinstance({ mode = &quot;full&quot;, SafeMode = true, DecompileTimeout = 15, })   Option names are not case-sensitive, and many have aliases. Every option is listed on the API Reference page, and the generated type page documents the SaveInstanceOptions type.  ",
+      "version": "Next",
+      "tagName": "h2"
+    },
+    {
+      "title": "Output​",
+      "type": 1,
+      "pageTitle": "Getting Started",
+      "url": "/USSI-Redux/docs/intro#output",
+      "content": " By default the save is a binary place file (.rbxl, or .rbxm for a model). It is much smaller and faster to load than XML. Set XML = true for .rbxlx / .rbxmx.  Option\tDefault\tMeaningBinary\ttrue\tSave as binary instead of XML. CompressionMode\t&quot;zstd&quot;\tHow binary chunks are compressed: &quot;zstd&quot;, &quot;lz4&quot; or false for none. CompressionLevel\t9\tCompression strength from -7 to 22. Higher is smaller but slower. Callback\tfalse\tSend the data to a function instead of writing a file. CopyToClipboard\tfalse\tPut the output on the clipboard. Only suits small saves. MaxDepth\t1000\tObjects nested deeper than this are moved up under their ancestor at that depth, so nothing is dropped. This stops very deep hierarchies from overflowing the stack when Roblox Studio opens the file.  ",
+      "version": "Next",
+      "tagName": "h2"
+    },
+    {
+      "title": "Modes​",
+      "type": 1,
+      "pageTitle": "Getting Started",
+      "url": "/USSI-Redux/docs/intro#modes",
+      "content": " mode chooses what gets saved.  Mode\tWhat it saves&quot;optimized&quot; (default)\tThe most important services: Workspace, Players, Lighting, ReplicatedStorage, StarterGui and others. &quot;full&quot;\tEverything under game. It also sets IgnoreDefaultProperties to false, unless you set that option yourself. &quot;scripts&quot;\tOnly the objects that are, or contain, a script, plus the parents that lead to them. any other value\tOnly ExtraInstances (and Object, if set).  If you set Object, &quot;optimized&quot; becomes &quot;full&quot;. Saving game as the Object is the same as &quot;full&quot;.  IgnoreDefaultProperties only affects XML output. Binary saves do not use it.  -- keep every property synsaveinstance({ mode = &quot;full&quot; }) -- &quot;full&quot; mode, but still skip default values synsaveinstance({ mode = &quot;full&quot;, IgnoreDefaultProperties = true })   ",
+      "version": "Next",
+      "tagName": "h2"
+    },
+    {
+      "title": "Decompiling scripts​",
+      "type": 1,
+      "pageTitle": "Getting Started",
+      "url": "/USSI-Redux/docs/intro#decompiling-scripts",
+      "content": " Scripts are decompiled automatically. saveinstance uses your executor's decompile, and falls back to MoonDecompiler, a decompiler written in Luau that is downloaded from this repository the first time it is needed. The fallback is used when the executor has no decompile, it errors, or it returns nothing.  Option\tDefault\tMeaningDecompile\ttrue\tTurn decompiling on or off. Decompiler\t&quot;auto&quot;\t&quot;auto&quot;, &quot;executor&quot; (only the executor's decompiler) or &quot;moon&quot; (only MoonDecompiler). CustomDecompiler\tfalse\tYour own decompiler: a function (script, bytecode) -&gt; string, or a table with a decompile method. It is tried first. DecompileTimeout\t10\tSeconds one decompile call may take. -1 disables the timeout. DecompileThreads\t1\tHow many scripts to decompile at once. Only helps if your executor's decompile yields. scriptcache\ttrue\tReuse decompiled output for identical scripts. SaveBytecode\tfalse\tAdd each script's bytecode to its Source as a comment.  synsaveinstance({ CustomDecompiler = function(script, bytecode) return decompileWithMedal(bytecode) -- return the source text end, })   Functions MoonDecompiler can't rebuild with normal structure are saved as a loop, or as a commented disassembly, and start with a comment saying why.  ",
+      "version": "Next",
+      "tagName": "h2"
+    },
+    {
+      "title": "Recovering from a crash​",
+      "type": 1,
+      "pageTitle": "Getting Started",
+      "url": "/USSI-Redux/docs/intro#recovering-from-a-crash",
+      "content": " Some executors crash on particular scripts during decompile. USSI Redux remembers which script was being decompiled, so you can run the save again.  Before each decompile, the script is recorded in EXEC_STATE.json. The record is removed when the decompile finishes.If the executor crashes, the record is still there on the next run. That script is marked as crashed.The next run skips it. Its Source says it crashed the executor on a previous run, and the rest of the save carries on.  Option\tDefault\tMeaningSkipCrashedScripts\ttrue\tTurn this protection on or off. It needs writefile. RetryCrashedScripts\tfalse\tForget the remembered scripts and try them again.  Closing the game in the middle of a decompile looks the same as a crash, so that script is skipped on the next run. If a script was skipped by mistake, run once with RetryCrashedScripts = true.  The same state file remembers which gethiddenproperty types crashed or failed on your executor, so those types are skipped on later runs.  ",
+      "version": "Next",
+      "tagName": "h2"
+    },
+    {
+      "title": "Staying safe​",
+      "type": 1,
+      "pageTitle": "Getting Started",
+      "url": "/USSI-Redux/docs/intro#staying-safe",
+      "content": " Option\tDefault\tMeaningSafeMode\tfalse\tDisconnects you from the game when saving starts, and turns on KillAllScripts and BoostFPS unless you set them. Highly recommended. KillAllScripts\tfalse\tKills all scripts to protect you further. SafeMode also turns it on. BoostFPS\tfalse\tTurns off 3D rendering while saving. SafeMode also turns it on. Anonymous\tfalse\tRisky. Removes your name and user ID from the file. IgnoreSpecialProperties\tfalse\tDon't use gethiddenproperty. Helps if your executor crashes or the file is corrupted.  saveinstance does not modify game state.  ",
+      "version": "Next",
+      "tagName": "h2"
+    },
+    {
+      "title": "Using the options type​",
+      "type": 1,
+      "pageTitle": "Getting Started",
+      "url": "/USSI-Redux/docs/intro#using-the-options-type",
+      "content": " saveinstance.luau is written for Luau's --!strict mode and exports a SaveInstanceOptions type. If you type-check your own scripts, you can use it to get autocomplete and errors for misspelled options:  local options: SaveInstanceOptions = { mode = &quot;full&quot;, DecompileTimeout = 15, }   ",
+      "version": "Next",
+      "tagName": "h2"
+    },
+    {
+      "title": "Where to go next​",
+      "type": 1,
+      "pageTitle": "Getting Started",
+      "url": "/USSI-Redux/docs/intro#where-to-go-next",
+      "content": " The API Reference lists every option with its type, default and description.The type page documents the SaveInstanceOptions type and the synsaveinstance function.The source on GitHub has the entire codebase for this project.This project is based on luau's UniversalSynSaveInstance and the Roblox file format specifications. See the README for the full list of credits. ",
+      "version": "Next",
+      "tagName": "h2"
+    },
+    {
+      "title": "API Reference",
+      "type": 0,
+      "sectionRef": "#",
+      "url": "/USSI-Redux/docs/api",
+      "content": "",
+      "keywords": "",
+      "version": "Next"
+    },
+    {
+      "title": "Options​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#options",
+      "content": " Every option is optional. Pass them in one table: synsaveinstance({ mode = &quot;full&quot; }). Option names are not case-sensitive: NilInstances, nilinstances, and nilInStaNces are the same option. Unknown names are ignored.  ",
+      "version": "Next",
+      "tagName": "h2"
+    },
+    {
+      "title": "mode​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#mode",
+      "content": " Type: string. Default: optimized.  What to save. optimized saves the most important services (Workspace, Players, Lighting, ReplicatedStorage, StarterGui, and others). full saves everything under game and also turns IgnoreDefaultProperties off, unless you set it yourself. scripts saves only the objects that are, or contain, a [LuaSourceContainer] (a script object), along with the path of parents that lead to them. Objects that don't lead to a script are left out. Any other value saves only ExtraInstances (and Object, if set). If Object is set, optimized becomes full.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "Binary​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#binary",
+      "content": " Type: boolean. Default: true.  Save a binary file (.rbxl/.rbxm) instead of an XML file (.rbxlx/.rbxmx). Binary files are smaller and load faster. If the executor cannot write binary data correctly, the script uses XML. Set the old option XML = true to force XML.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "CompressionMode​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#compressionmode",
+      "content": " Type: string | boolean. Default: &quot;zstd&quot;.  How to compress (make smaller) the binary file: &quot;zstd&quot;, &quot;lz4&quot;, or false for no compression. true means &quot;zstd&quot;. The old option DisableCompression = true means false.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "CompressionLevel​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#compressionlevel",
+      "content": " Type: number. Default: 9.  Compression level for zstd, from -7 to 22. A higher level makes a smaller file but takes longer. This is ignored for lz4 and when compression is off.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "FilePath​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#filepath",
+      "content": " Type: string | false. Default: false.  File name to save to. You can include a folder. If the name has no extension, the script adds one based on Binary and IsModel. If you set this, the script overwrites an existing file and ignores AvoidFileOverwrite.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "SafeMode​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#safemode",
+      "content": " Type: boolean. Default: false.  Disconnect the LocalPlayer from the game when saving starts. This turns on KillAllScripts and BoostFPS unless you set them yourself. HIGHLY RECOMMENDED.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "KillAllScripts​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#killallscripts",
+      "content": " Type: boolean. Default: false.  Close or disable other running scripts before saving. SafeMode turns this on. Some games stop responding to input after this. That is normal. HIGHLY RECOMMENDED.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "BoostFPS​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#boostfps",
+      "content": " Type: boolean. Default: false.  Turn off 3D rendering while saving, then turn it back on. SafeMode turns this on.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "Object​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#object",
+      "content": " Type: Instance | false. Default: false.  Save this [Instance] instead of the whole place. The script saves a model if you do not set IsModel = false. If you pass game, it saves the place and uses full mode. You must pass an [Instance], not a name.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "IsModel​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#ismodel",
+      "content": " Type: boolean. Default: false.  Save a model (.rbxm/.rbxmx) instead of a place (.rbxl/.rbxlx). Object turns this on unless you set it yourself. Passing a list of Instances as an argument also turns it on.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "ShowStatus​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#showstatus",
+      "content": " Type: boolean. Default: true.  Show a status label on the screen. It shows the size while saving, then the final size and time.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "ReadMe​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#readme",
+      "content": " Type: boolean. Default: true.  Add a README script to the save. It contains save details (place ID, date, time, platform, executor, recovered scripts, warnings) and tips.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "Decompile​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#decompile",
+      "content": " Type: boolean. Default: true.  Turn the compiled script back into source code (decompile). This replaces the Source of each [LuaSourceContainer] with decompiled code. If this is off, Source says decompiling is disabled.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "SaveBytecode​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#savebytecode",
+      "content": " Type: boolean. Default: false.  If the executor supports getscriptbytecode, add the compiled script data (bytecode) to Source as a comment. You can decompile it later. This respects DecompileIgnore.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "DecompileTimeout​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#decompiletimeout",
+      "content": " Type: number. Default: 10.  How many seconds one decompile call can take. If it takes longer, the script stops waiting and writes a timeout message in Source. Set to -1 to disable the timeout.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "DecompileThreads​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#decompilethreads",
+      "content": " Type: number. Default: 1.  How many scripts to decompile at the same time before saving. 1 decompiles one by one while saving. Higher values only help if your executor's decompile yields, and need scriptcache and getscriptbytecode.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "Decompiler​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#decompiler",
+      "content": " Type: string. Default: &quot;auto&quot;.  Which decompiler turns scripts back into source. &quot;auto&quot; uses the executor's decompile, and uses MoonDecompiler (a Luau decompiler downloaded from BuiltinDecompilerURL) when the executor has none or it fails. &quot;executor&quot; only uses the executor's decompile. &quot;moon&quot; only uses MoonDecompiler.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "CustomDecompiler​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#customdecompiler",
+      "content": " Type: ((script: Instance, bytecode: string?) -&gt; string) | {decompile: (script: Instance, bytecode: string?) -&gt; string} | false. Default: false.  Your own decompiler, that can replace the default decompile function with a custom one.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "BuiltinDecompilerURL​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#builtindecompilerurl",
+      "content": " Type: string | false. Default: false.  Optional. Where MoonDecompiler is downloaded from when it is needed. Leave it false and the USSI-Redux repository is used automatically (the main branch first, then experimental).  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "BytecodeTimeout​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#bytecodetimeout",
+      "content": " Type: number. Default: 3.  How many seconds a getscriptbytecode call can take. If it takes longer, the script stops waiting and skips the bytecode for that script. Set to -1 to disable the timeout.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "DecompileIgnore​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#decompileignore",
+      "content": " Type: {Instance | string} | {[Instance | string]: boolean | {[string]: boolean}}. Default: {TextChatService}.  Skip decompiling matched [Instance]s and their children. Source becomes a short ignored message. You can pass an [Instance], a class name, or ClassName = {Name1, Name2}. Set an [Instance] to false to skip only that instance, not its children.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "SourceCache​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#sourcecache",
+      "content": " Type: {[Instance]: string} | false. Default: false.  Source text to use for these scripts as-is instead of decompiling them.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "DecompileJobless​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#decompilejobless",
+      "content": " Type: boolean. Default: false.  Only use scripts that are already in the decompile cache. Missing scripts get a short not-found message. This turns on scriptcache.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "SkipCrashedScripts​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#skipcrashedscripts",
+      "content": " Type: boolean. Default: true.  Remember which script was being decompiled. If the executor crashed or the game closed mid-decompile, the next run skips that script (its Source says so) instead of crashing again, so rerunning the save gets past the crash point. The list is kept in EXEC_STATE.json.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "RetryCrashedScripts​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#retrycrashedscripts",
+      "content": " Type: boolean. Default: false.  Forget the scripts remembered by SkipCrashedScripts and try to decompile them again. Use this if a script was skipped by mistake, for example when you closed the game during a save.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "scriptcache​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#scriptcache",
+      "content": " Type: boolean. Default: true.  If the executor supports getscriptbytecode, cache decompiled code. This avoids decompiling the same script twice. The cache stays after the script reloads.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "RecoverScriptsFromAssets​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#recoverscriptsfromassets",
+      "content": " Type: boolean. Default: true.  Recover the original Source of scripts that were published as assets. Changes made after publishing are not included.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "IsolatePlayers​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#isolateplayers",
+      "content": " Type: boolean. Default: false.  Put every [Player] under a top-level &quot;Players&quot; Folder instead of inside the [Players] service. This turns on SaveNotCreatable. If both are on, this option is used instead of IsolateLocalPlayer.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "IsolateLocalPlayer​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#isolatelocalplayer",
+      "content": " Type: boolean. Default: false.  Save the LocalPlayer as a Folder named &quot;LocalPlayer&quot; instead of a [Player] object. This is ignored if IsolatePlayers is on.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "IsolateLocalPlayerCharacter​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#isolatelocalplayercharacter",
+      "content": " Type: boolean. Default: false.  Save LocalPlayer.Character as a [Model] named &quot;LocalPlayer Character&quot;. This saves the character even when characters are normally skipped.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "IsolateStarterPlayer​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#isolatestarterplayer",
+      "content": " Type: boolean. Default: false.  Put [StarterPlayer]'s children under a top-level &quot;StarterPlayer&quot; Folder. The original service stays, but it is empty.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "SavePlayerCharacters​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#saveplayercharacters",
+      "content": " Type: boolean. Default: false.  Save player characters instead of skipping them. This also saves objects with Archivable = false, so IgnoreNotArchivable is forced on.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "NilInstances​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#nilinstances",
+      "content": " Type: boolean. Default: false.  Include objects that have no parent (they are not under game). This needs the executor function getnilinstances. When that function exists, it also turns on SaveNotCreatable.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "ExtraInstances​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#extrainstances",
+      "content": " Type: {Instance}. Default: {}.  A list of [Instance]s to add to the normal save. If mode is not a valid value, only these Instances (and Object, if set) are saved. Passing a list of Instances as an argument fills this list.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "IgnoreList​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#ignorelist",
+      "content": " Type: {Instance | string} | {[Instance | string]: boolean | {[string]: boolean}}. Default: {CoreGui, CorePackages, Packages = false}.  Objects to skip. Use an [Instance] or a class name as a key to skip that object and its children. ClassName = false keeps the object but skips its children. ClassName = {Name1, Name2} skips objects with those names. You can also pass a list of Instances or class names.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "MaxDepth​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#maxdepth",
+      "content": " Type: number. Default: 1000.  Objects nested deeper than this are moved up under their ancestor at depth MaxDepth, so nothing is dropped, only the nesting is lost. This stops very deep hierarchies from overflowing the stack when Roblox Studio opens the file (binary saves opened at 1740 levels deep; XML saves crashed at 1750). Use math.huge to disable.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "IgnoreSpecialProperties​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#ignorespecialproperties",
+      "content": " Type: boolean. Default: false.  Do not use the executor function gethiddenproperty. Other property reads still work. This can help if your executor crashes or the file is corrupted.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "AlternativeWritefile​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#alternativewritefile",
+      "content": " Type: boolean. Default: true.  Write the file in smaller pieces with appendfile instead of one writefile call. For binary saves, if appendfile fails, it uses writefile; if both fail, it switches to XML.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "Anonymous​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#anonymous",
+      "content": " Type: boolean | {Name: string?, UserId: number?}. Default: false.  RISKY: Replace LocalPlayer.Name and UserId in the output. true replaces them with &quot;Roblox&quot; and 1. You can also pass a table with Name and/or UserId. Name matching ignores case. This can also change other text or numbers that match.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "RiskyServicesDisabled​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#riskyservicesdisabled",
+      "content": " Type: {UGC: boolean?, Encoding: boolean?, Reflection: boolean?}. Default: {UGC = true, Encoding = false, Reflection = false}.  Turn off services that some games may detect. UGC skips [UGCValidationService] (used for some hidden properties). Encoding skips [EncodingService]. Reflection skips [ReflectionService] (used for class data). Set a flag to true to skip that service. If you do not set RiskyServicesDisabled yourself, the UGC fallback turns on automatically when gethiddenproperty is missing.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "AvoidFileOverwrite​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#avoidfileoverwrite",
+      "content": " Type: boolean. Default: true.  If FilePath is not set, add (1), (2), ... to the file name instead of overwriting an existing file.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "AntiIdle​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#antiidle",
+      "content": " Type: boolean. Default: true.  Stop Roblox from kicking you for being idle (not moving) for 20 minutes.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "CopyToClipboard​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#copytoclipboard",
+      "content": " Type: boolean. Default: false.  Copy the result to the clipboard (the copy/paste buffer) instead of writing a file. Your executor must support setrbxclipboard. Use this only for small saves.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "Callback​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#callback",
+      "content": " Type: ((data: string, chunks: {string}) -&gt; ()) | false. Default: false.  Call this function with the result instead of writing a file. It receives the full text and a list of chunks. If CopyToClipboard is also on, the clipboard is used instead.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "IgnoreProperties​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#ignoreproperties",
+      "content": " Type: {string}. Default: {}.  A list of property names to skip on every object. For example: {&quot;Tags&quot;, &quot;AttributesSerialize&quot;}.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "IgnoreNotArchivable​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#ignorenotarchivable",
+      "content": " Type: boolean. Default: true.  Save objects even when their Archivable property is false. If this is off, the script skips those objects.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "SaveNotCreatable​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#savenotcreatable",
+      "content": " Type: boolean. Default: false.  Save classes that Roblox says are not creatable. The script replaces them with a class it can create, using NotCreatableFixes (usually Folder). This turns on automatically with IsolatePlayers, IsolateLocalPlayer, and NilInstances (when getnilinstances exists).  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "NotCreatableFixes​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#notcreatablefixes",
+      "content": " Type: {string} | {[string]: string | false}. Default: built-in replacements.  Replace a class with a class that can be created. The default replacement is &quot;Folder&quot;. A list of class names also becomes Folder. Built-in changes: [Player], [PlayerGui], [PlayerScripts], [TouchTransmitter], and others become Folder; [CloudLocalizationTable] becomes [LocalizationTable]; Platform becomes [Part]; Status becomes [Model]. Set a class to false to skip its replacement.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "NilInstancesFixes​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#nilinstancesfixes",
+      "content": " Type: {[string]: ((instance: Instance, overrides: table) -&gt; Instance?) | false}. Default: built-in Animator/AdPortal/Attachment/BaseWrap/PackageLink fixes.  Where to put objects that have no parent. For example, it puts [Animator] under an [AnimationController]. Built-in fixes exist for [Animator], [AdPortal], [Attachment], [BaseWrap], [PackageLink], [DebuggerWatch], and [PluginAction] (the last two have no valid parent, so they are skipped). Child classes use the parent fix ([Bone]s use the Attachment fix). Set a class to false to turn off its fix.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "IgnoreDefaultProperties​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#ignoredefaultproperties",
+      "content": " Type: boolean. Default: true.  Skip properties that already have the default value for their class. This only affects XML output. Binary output does not use this option.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "IgnorePropertiesOfNotScriptsOnScriptsMode​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#ignorepropertiesofnotscriptsonscriptsmode",
+      "content": " Type: boolean. Default: false.  Only in scripts mode: save properties for [LuaSourceContainer]s and skip properties for all other objects. This does nothing in other modes.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "IgnoreDefaultPlayerScripts​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#ignoredefaultplayerscripts",
+      "content": " Type: boolean. Default: false.  Skip Roblox's default player scripts (PlayerModule, BubbleChat, ChatScript, PlayerScriptsLoader, RbxCharacterSounds). This can stop some executors from crashing during decompile.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "SaveCacheInterval​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#savecacheinterval",
+      "content": " Type: number. Default: 0x1600 * 10.  How much XML data the script holds in memory while saving. Lower values update the status more often but are slower. This does not write to disk. When KillAllScripts is on, this also sets the script timeout between 20 and 30 seconds.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "SharedBinaryStrings​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#sharedbinarystrings",
+      "content": " Type: boolean. Default: false.  Store the same binary data (meshes, images, ...) only once in the file. This makes saves with repeated data smaller. Files with all unique data can get slightly bigger. This is not an official Roblox format, but Studio can still open the file.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "TreatUnionsAsParts​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#treatunionsasparts",
+      "content": " Type: boolean. Default: false.  Change all [PartOperation]s (unions and intersections) into [Part]s. RISKY: you lose the merged shape, but executors that cannot read unions will still show visible parts.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "ShutdownWhenDone​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#shutdownwhendone",
+      "content": " Type: boolean. Default: false.  Close the game after a successful save.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "__DEBUG_MODE​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#__debug_mode",
+      "content": " Type: boolean | ((...any) -&gt; ()). Default: false.  Print debug warnings for unusual cases. If you pass a function, the script uses it instead of warn.  ",
+      "version": "Next",
+      "tagName": "h3"
+    },
+    {
+      "title": "Aliases​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#aliases",
+      "content": " Old option names that still work. Each one sets the option shown beside it.  Alias\tOptionAnonymousMode\tAnonymous Blacklist\tIgnoreList ClassIgnoreList\tIgnoreList Clipboard\tCopyToClipboard Compress\tCompressionMode Compression\tCompressionMode Debug\t__DEBUG_MODE DecompileScripts\tDecompile Decompiler\tDecompile DecompilerTimeout\tDecompileTimeout EmbedBytecode\tSaveBytecode FileName\tFilePath IgnoreArchivable\tIgnoreNotArchivable IgnoreClasses\tIgnoreList IgnoreDefaultProps\tIgnoreDefaultProperties IgnoreInstances\tIgnoreList IgnoreProperty\tIgnoreProperties IgnoreRobloxPlayerScripts\tIgnoreDefaultPlayerScripts InstanceIgnoreList\tIgnoreList InstancesBlacklist\tIgnoreList IsolatePlayerGui\tIsolateLocalPlayer LocalPlayer\tIsolateLocalPlayer Model\tObject NoXML\tBinary Path\tFilePath Players\tIsolatePlayers Progress\tShowStatus Root\tObject SaveAsBinary\tBinary SaveCharacters\tSavePlayerCharacters SaveLocalPlayer\tIsolateLocalPlayer SaveModel\tObject SaveNil\tNilInstances SaveNilInstances\tNilInstances SaveNonCreatable\tSaveNotCreatable SavePlayerGui\tIsolateLocalPlayer SavePlayers\tIsolatePlayers SavePlayersData\tIsolatePlayers SaveScripts\tDecompile SaveStarterPlayer\tIsolateStarterPlayer ScriptDecompile\tDecompile ShowProgress\tShowStatus Status\tShowStatus StatusText\tShowStatus UseDecompiler\tDecompile Verbose\t__DEBUG_MODE timeout\tDecompileTimeout  ",
+      "version": "Next",
+      "tagName": "h2"
+    },
+    {
+      "title": "Inverted aliases​",
+      "type": 1,
+      "pageTitle": "API Reference",
+      "url": "/USSI-Redux/docs/api#inverted-aliases",
+      "content": " Old option names that set the option shown beside them to the opposite value. For example noscripts = true sets Decompile = false.  Alias\tOptionDisableCompression\tCompressionMode NoDecompile\tDecompile noscripts\tDecompile NullifyScripts\tDecompile Overwrite\tAvoidFileOverwrite RemovePlayerCharacters\tSavePlayerCharacters RemovePlayers\tIsolatePlayers SkipScripts\tDecompile XML\tBinary ",
+      "version": "Next",
+      "tagName": "h2"
+    },
+    {
+      "title": "UniversalSynSaveInstance",
+      "type": 0,
+      "sectionRef": "#",
+      "url": "/USSI-Redux/api/UniversalSynSaveInstance",
+      "content": "",
+      "keywords": "",
+      "version": null
+    },
+    {
+      "title": "Types​",
+      "type": 1,
+      "pageTitle": "UniversalSynSaveInstance",
+      "url": "/USSI-Redux/api/UniversalSynSaveInstance#types",
+      "content": " ",
+      "version": null,
+      "tagName": "h2"
+    },
+    {
+      "title": "SaveInstanceOptions​",
+      "type": 1,
+      "pageTitle": "UniversalSynSaveInstance",
+      "url": "/USSI-Redux/api/UniversalSynSaveInstance#SaveInstanceOptions",
+      "content": "&lt;/&gt; interface SaveInstanceOptions { mode: string-- What to save. optimized saves the most important services (Workspace, Players, Lighting, ReplicatedStorage, StarterGui, and others). full saves everything under game and also turns IgnoreDefaultProperties off, unless you set it yourself. scripts saves only the objects that are, or contain, a LuaSourceContainer (a script object), along with the path of parents that lead to them. Objects that don't lead to a script are left out. Any other value saves only ExtraInstances (and Object, if set). If Object is set, optimized becomes full. Default: optimized Binary: boolean-- Save a binary file (.rbxl/.rbxm) instead of an XML file (.rbxlx/.rbxmx). Binary files are smaller and load faster. If the executor cannot write binary data correctly, the script uses XML. Set the old option XML = true to force XML. Default: true CompressionMode: string | boolean-- How to compress (make smaller) the binary file: &quot;zstd&quot;, &quot;lz4&quot;, or false for no compression. true means &quot;zstd&quot;. The old option DisableCompression = true means false. Default: &quot;zstd&quot; CompressionLevel: number-- Compression level for zstd, from -7 to 22. A higher level makes a smaller file but takes longer. This is ignored for lz4 and when compression is off. Default: 9 FilePath: string | false-- File name to save to. You can include a folder. If the name has no extension, the script adds one based on Binary and IsModel. If you set this, the script overwrites an existing file and ignores AvoidFileOverwrite. Default: false SafeMode: boolean-- Disconnect the LocalPlayer from the game when saving starts. This turns on KillAllScripts and BoostFPS unless you set them yourself. HIGHLY RECOMMENDED. Default: false KillAllScripts: boolean-- Close or disable other running scripts before saving. SafeMode turns this on. Some games stop responding to input after this. That is normal. HIGHLY RECOMMENDED. Default: false BoostFPS: boolean-- Turn off 3D rendering while saving, then turn it back on. SafeMode turns this on. Default: false Object: Instance | false-- Save this Instance instead of the whole place. The script saves a model if you do not set IsModel = false. If you pass game, it saves the place and uses full mode. You must pass an Instance, not a name. Default: false IsModel: boolean-- Save a model (.rbxm/.rbxmx) instead of a place (.rbxl/.rbxlx). Object turns this on unless you set it yourself. Passing a list of Instances as an argument also turns it on. Default: false ShowStatus: boolean-- Show a status label on the screen. It shows the size while saving, then the final size and time. Default: true ReadMe: boolean-- Add a README script to the save. It contains save details (place ID, date, time, platform, executor, recovered scripts, warnings) and tips. Default: true Decompile: boolean-- Turn the compiled script back into source code (decompile). This replaces the Source of each LuaSourceContainer with decompiled code. If this is off, Source says decompiling is disabled. Default: true SaveBytecode: boolean-- If the executor supports getscriptbytecode, add the compiled script data (bytecode) to Source as a comment. You can decompile it later. This respects DecompileIgnore. Default: false DecompileTimeout: number-- How many seconds one decompile call can take. If it takes longer, the script stops waiting and writes a timeout message in Source. Set to -1 to disable the timeout. Default: 10 DecompileThreads: number-- How many scripts to decompile at the same time before saving. 1 decompiles one by one while saving. Higher values only help if your executor's decompile yields, and need scriptcache and getscriptbytecode. Default: 1 Decompiler: string-- Which decompiler turns scripts back into source. &quot;auto&quot; uses the executor's decompile, and uses MoonDecompiler (a LuaU decompiler downloaded from BuiltinDecompilerURL) when the executor has none or it fails. &quot;executor&quot; only uses the executor's decompile. &quot;moon&quot; only uses MoonDecompiler. Default: &quot;auto&quot; CustomDecompiler: (( script: Instance , bytecode: string? ) → string) | {decompile: ( script: Instance , bytecode: string? ) → string} | false-- Your own decompiler, that can replace the default decompile function with a custom one. Default: false BuiltinDecompilerURL: string | false-- Optional. Where MoonDecompiler is downloaded from when it is needed. Leave it false and the USSI-Redux repository is used automatically (the main branch first, then experimental). Default: false BytecodeTimeout: number-- How many seconds a getscriptbytecode call can take. If it takes longer, the script stops waiting and skips the bytecode for that script. Set to -1 to disable the timeout. Default: 3 DecompileIgnore: {Instance | string} | {[Instance | string]: boolean | {[string]: boolean}}-- Skip decompiling matched Instances and their children. Source becomes a short ignored message. You can pass an Instance, a class name, or ClassName = {Name1, Name2}. Set an Instance to false to skip only that instance, not its children. Default: {TextChatService} SourceCache: {[Instance ]: string} | false-- Source text to use for these scripts as-is instead of decompiling them. Default: false DecompileJobless: boolean-- Only use scripts that are already in the decompile cache. Missing scripts get a short not-found message. This turns on scriptcache. Default: false SkipCrashedScripts: boolean-- Remember which script was being decompiled. If the executor crashed or the game closed mid-decompile, the next run skips that script (its Source says so) instead of crashing again, so rerunning the save gets past the crash point. The list is kept in EXEC_STATE.json. Default: true RetryCrashedScripts: boolean-- Forget the scripts remembered by SkipCrashedScripts and try to decompile them again. Use this if a script was skipped by mistake, for example when you closed the game during a save. Default: false scriptcache: boolean-- If the executor supports getscriptbytecode, cache decompiled code. This avoids decompiling the same script twice. The cache stays after the script reloads. Default: true RecoverScriptsFromAssets: boolean-- Recover the original Source of scripts that were published as assets. Changes made after publishing are not included. Default: true IsolatePlayers: boolean-- Put every Player under a top-level &quot;Players&quot; Folder instead of inside the Players service. This turns on SaveNotCreatable. If both are on, this option is used instead of IsolateLocalPlayer. Default: false IsolateLocalPlayer: boolean-- Save the LocalPlayer as a Folder named &quot;LocalPlayer&quot; instead of a Player object. This is ignored if IsolatePlayers is on. Default: false IsolateLocalPlayerCharacter: boolean-- Save LocalPlayer.Character as a Model named &quot;LocalPlayer Character&quot;. This saves the character even when characters are normally skipped. Default: false IsolateStarterPlayer: boolean-- Put StarterPlayer's children under a top-level &quot;StarterPlayer&quot; Folder. The original service stays, but it is empty. Default: false SavePlayerCharacters: boolean-- Save player characters instead of skipping them. This also saves objects with Archivable = false, so IgnoreNotArchivable is forced on. Default: false NilInstances: boolean-- Include objects that have no parent (they are not under game). This needs the executor function getnilinstances. When that function exists, it also turns on SaveNotCreatable. Default: false ExtraInstances: {Instance }-- A list of Instances to add to the normal save. If mode is not a valid value, only these Instances (and Object, if set) are saved. Passing a list of Instances as an argument fills this list. Default: {} IgnoreList: {Instance | string} | {[Instance | string]: boolean | {[string]: boolean}}-- Objects to skip. Use an Instance or a class name as a key to skip that object and its children. ClassName = false keeps the object but skips its children. ClassName = {Name1, Name2} skips objects with those names. You can also pass a list of Instances or class names. Default: {CoreGui, CorePackages, Packages = false} MaxDepth: number-- Objects nested deeper than this are moved up under their ancestor at depth MaxDepth, so nothing is dropped, only the nesting is lost. This stops very deep hierarchies from overflowing the stack when Roblox Studio opens the file (binary saves opened at 1740 levels deep; XML saves crashed at 1750). Use math.huge to disable. Default: 1000 IgnoreSpecialProperties: boolean-- Do not use the executor function gethiddenproperty. Other property reads still work. This can help if your executor crashes or the file is corrupted. Default: false AlternativeWritefile: boolean-- Write the file in smaller pieces with appendfile instead of one writefile call. For binary saves, if appendfile fails, it uses writefile; if both fail, it switches to XML. Default: true Anonymous: boolean | { Name: string?, UserId: number? }-- RISKY: Replace LocalPlayer.Name and UserId in the output. true replaces them with &quot;Roblox&quot; and 1. You can also pass a table with Name and/or UserId. Name matching ignores case. This can also change other text or numbers that match. Default: false RiskyServicesDisabled: { UGC: boolean?, Encoding: boolean?, Reflection: boolean? }-- Turn off services that some games may detect. UGC skips UGCValidationService (used for some hidden properties). Encoding skips EncodingService. Reflection skips ReflectionService (used for class data). Set a flag to true to skip that service. If you do not set RiskyServicesDisabled yourself, the UGC fallback turns on automatically when gethiddenproperty is missing. Default: {UGC = true, Encoding = false, Reflection = false} AvoidFileOverwrite: boolean-- If FilePath is not set, add (1), (2), ... to the file name instead of overwriting an existing file. Default: true AntiIdle: boolean-- Stop Roblox from kicking you for being idle (not moving) for 20 minutes. Default: true CopyToClipboard: boolean-- Copy the result to the clipboard (the copy/paste buffer) instead of writing a file. Your executor must support setrbxclipboard. Use this only for small saves. Default: false Callback: (( data: string, chunks: {string} ) → ()) | false-- Call this function with the result instead of writing a file. It receives the full text and a list of chunks. If CopyToClipboard is also on, the clipboard is used instead. Default: false IgnoreProperties: {string}-- A list of property names to skip on every object. For example: {&quot;Tags&quot;, &quot;AttributesSerialize&quot;}. Default: {} IgnoreNotArchivable: boolean-- Save objects even when their Archivable property is false. If this is off, the script skips those objects. Default: true SaveNotCreatable: boolean-- Save classes that Roblox says are not creatable. The script replaces them with a class it can create, using NotCreatableFixes (usually Folder). This turns on automatically with IsolatePlayers, IsolateLocalPlayer, and NilInstances (when getnilinstances exists). Default: false NotCreatableFixes: {string} | {[string]: string | false}-- Replace a class with a class that can be created. The default replacement is &quot;Folder&quot;. A list of class names also becomes Folder. Built-in changes: Player, PlayerGui, PlayerScripts, TouchTransmitter, and others become Folder; CloudLocalizationTable becomes LocalizationTable; Platform becomes Part; Status becomes Model. Set a class to false to skip its replacement. Default: built-in replacements NilInstancesFixes: {[string]: (( instance: Instance , overrides: table ) → Instance? ) | false}-- Where to put objects that have no parent. For example, it puts Animator under an AnimationController. Built-in fixes exist for Animator, AdPortal, Attachment, BaseWrap, PackageLink, DebuggerWatch, and PluginAction (the last two have no valid parent, so they are skipped). Child classes use the parent fix (Bones use the Attachment fix). Set a class to false to turn off its fix. Default: built-in Animator/AdPortal/Attachment/BaseWrap/PackageLink fixes IgnoreDefaultProperties: boolean-- Skip properties that already have the default value for their class. This only affects XML output. Binary output does not use this option. Default: true IgnorePropertiesOfNotScriptsOnScriptsMode: boolean-- Only in scripts mode: save properties for LuaSourceContainers and skip properties for all other objects. This does nothing in other modes. Default: false IgnoreDefaultPlayerScripts: boolean-- Skip Roblox's default player scripts (PlayerModule, BubbleChat, ChatScript, PlayerScriptsLoader, RbxCharacterSounds). This can stop some executors from crashing during decompile. Default: false SaveCacheInterval: number-- How much XML data the script holds in memory while saving. Lower values update the status more often but are slower. This does not write to disk. When KillAllScripts is on, this also sets the script timeout between 20 and 30 seconds. Default: 0x1600 * 10 SharedBinaryStrings: boolean-- Store the same binary data (meshes, images, ...) only once in the file. This makes saves with repeated data smaller. Files with all unique data can get slightly bigger. This is not an official Roblox format, but Studio can still open the file. Default: false TreatUnionsAsParts: boolean-- Change all PartOperations (unions and intersections) into Parts. RISKY: you lose the merged shape, but executors that cannot read unions will still show visible parts. Default: false ShutdownWhenDone: boolean-- Close the game after a successful save. Default: false __DEBUG_MODE: boolean | ((...any) → ())-- Print debug warnings for unusual cases. If you pass a function, the script uses it instead of warn. Default: false } Options for UniversalSynSaveInstance.synsaveinstance. All fields are optional. The default is shown at the end of each field. Option names are not case-sensitive: NilInstances, nilinstances, and nilInStaNces are the same option. Unknown names are ignored.  ",
+      "version": null,
+      "tagName": "h3"
+    },
+    {
+      "title": "OptionsAliases​",
+      "type": 1,
+      "pageTitle": "UniversalSynSaveInstance",
+      "url": "/USSI-Redux/api/UniversalSynSaveInstance#OptionsAliases",
+      "content": "&lt;/&gt; interface OptionsAliases { AnonymousMode: string-- Anonymous Blacklist: string-- IgnoreList ClassIgnoreList: string-- IgnoreList Clipboard: string-- CopyToClipboard Compress: string-- CompressionMode Compression: string-- CompressionMode Debug: string-- __DEBUG_MODE DecompileScripts: string-- Decompile Decompiler: string-- Decompile DecompilerTimeout: string-- DecompileTimeout EmbedBytecode: string-- SaveBytecode FileName: string-- FilePath IgnoreArchivable: string-- IgnoreNotArchivable IgnoreClasses: string-- IgnoreList IgnoreDefaultProps: string-- IgnoreDefaultProperties IgnoreInstances: string-- IgnoreList IgnoreProperty: string-- IgnoreProperties IgnoreRobloxPlayerScripts: string-- IgnoreDefaultPlayerScripts InstanceIgnoreList: string-- IgnoreList InstancesBlacklist: string-- IgnoreList IsolatePlayerGui: string-- IsolateLocalPlayer LocalPlayer: string-- IsolateLocalPlayer Model: string-- Object NoXML: string-- Binary Path: string-- FilePath Players: string-- IsolatePlayers Progress: string-- ShowStatus Root: string-- Object SaveAsBinary: string-- Binary SaveCharacters: string-- SavePlayerCharacters SaveLocalPlayer: string-- IsolateLocalPlayer SaveModel: string-- Object SaveNil: string-- NilInstances SaveNilInstances: string-- NilInstances SaveNonCreatable: string-- SaveNotCreatable SavePlayerGui: string-- IsolateLocalPlayer SavePlayers: string-- IsolatePlayers SavePlayersData: string-- IsolatePlayers SaveScripts: string-- Decompile SaveStarterPlayer: string-- IsolateStarterPlayer ScriptDecompile: string-- Decompile ShowProgress: string-- ShowStatus Status: string-- ShowStatus StatusText: string-- ShowStatus UseDecompiler: string-- Decompile Verbose: string-- __DEBUG_MODE timeout: string-- DecompileTimeout } Map of old option names to new option names for the UniversalSynSaveInstance.SaveInstanceOptions table. Format: { OldName = NewName } The script reads these before your options, so you cannot change them after the script starts.  ",
+      "version": null,
+      "tagName": "h3"
+    },
+    {
+      "title": "OptionsAliasesInverse​",
+      "type": 1,
+      "pageTitle": "UniversalSynSaveInstance",
+      "url": "/USSI-Redux/api/UniversalSynSaveInstance#OptionsAliasesInverse",
+      "content": "&lt;/&gt; interface OptionsAliasesInverse { DisableCompression: string-- CompressionMode NoDecompile: string-- Decompile noscripts: string-- Decompile NullifyScripts: string-- Decompile Overwrite: string-- AvoidFileOverwrite RemovePlayerCharacters: string-- SavePlayerCharacters RemovePlayers: string-- IsolatePlayers SkipScripts: string-- Decompile XML: string-- Binary } Map of old option names that change a true/false value to the opposite. Format: { OldName = NewName } The script flips the value before it uses it. noscripts = true sets Decompile = false. DisableCompression = true sets CompressionMode = false. Overwrite = true sets AvoidFileOverwrite = false. The script reads these before your options, so you cannot change them after the script starts. ",
+      "version": null,
+      "tagName": "h3"
+    },
+    {
+      "title": "Functions​",
+      "type": 1,
+      "pageTitle": "UniversalSynSaveInstance",
+      "url": "/USSI-Redux/api/UniversalSynSaveInstance#functions",
+      "content": " ",
+      "version": null,
+      "tagName": "h2"
+    },
+    {
+      "title": "synsaveinstance​",
+      "type": 1,
+      "pageTitle": "UniversalSynSaveInstance",
+      "url": "/USSI-Redux/api/UniversalSynSaveInstance#synsaveinstance",
+      "content": "This is a yielding function. When called, it will pause the Lua thread that called the function until a result is ready to be returned, without interrupting other scripts. Yields &lt;/&gt; UniversalSynSaveInstance.synsaveinstance( ...: table | SaveInstanceOptions | Instance | string-- UniversalSynSaveInstance.SaveInstanceOptions tables are combined in order. An executor's native SaveInstanceOptions object is read the same way as a table, but not every property may be supported, because the property set varies per executor. An Instance becomes Object. A string becomes FilePath; an empty string counts as not set. A list of Instances becomes ExtraInstances and sets IsModel = true. If you pass Instances directly and do not set mode, mode becomes invalid, so only those Instances are saved. ) → string?-- The output file path when saving to a file, or nil when Callback or CopyToClipboard is used. Save the current place, one Instance, or a group of Instances. Example: local Params = { RepoURL = &quot;https://raw.githubusercontent.com/andrewexec/USSI-Redux/main/&quot;, SSI = &quot;saveinstance&quot;, } local synsaveinstance = loadstring(game:HttpGet(Params.RepoURL .. Params.SSI .. &quot;.luau&quot;, true), Params.SSI)() local SaveInstanceOptions = { SafeMode = true, DecompileTimeout = 15, SaveBytecode = true } synsaveinstance(SaveInstanceOptions) You can pass any number of arguments, in any order: synsaveinstance({ mode = &quot;scripts&quot; }, &quot;myScripts.rbxlx&quot;) synsaveinstance(workspace.Model) -- Object; saved as a model synsaveinstance({ workspace.Model, workspace.OtherModel }) -- ExtraInstances  ",
+      "version": null,
+      "tagName": "h3"
+    }
+  ],
+  "options": { "id": "default" }
+}
