@@ -311,6 +311,7 @@ function Moon.parse(bytecode: string)
 			end
 
 			local sizeCode = varint()
+			p.codeOffset = pos
 			local code = table.create(sizeCode)
 			for j = 1, sizeCode do
 				code[j] = u32()
@@ -340,11 +341,12 @@ function Moon.parse(bytecode: string)
 					k = { type = "table", keys = keys }
 				elseif tag == CONSTANT_TABLE_WITH_CONSTANTS then
 					local keys = {}
+					local values = {}
 					for q = 1, varint() do
 						keys[q] = varint()
-						i32()
+						values[q] = i32()
 					end
-					k = { type = "table", keys = keys }
+					k = { type = "table", keys = keys, values = values }
 				elseif tag == CONSTANT_CLOSURE then
 					k = { type = "closure", protoId = varint() }
 				elseif tag == CONSTANT_VECTOR then
@@ -794,6 +796,14 @@ local function indexSuffix(keyName)
 	return ("[%s]"):format(quote(keyName))
 end
 
+local function exprKeySuffix(e)
+	local name = e.lit and e.s:match('^"([%a_][%w_]*)"$')
+	if name and isIdentifier(name) then
+		return "." .. name
+	end
+	return "[" .. e.s .. "]"
+end
+
 local function compare(op, l, r)
 	if l.lit and not r.lit then
 		if op == "<" or op == "<=" then
@@ -860,6 +870,31 @@ local function suggestName(text)
 		or text:match(':FindFirstChildOfClass%("([%a_][%w_]*)"%)$')
 	if child then
 		return lowerFirst(child)
+	end
+	local simple = {
+		{ ":GetChildren%(%)$", "children" },
+		{ ":GetDescendants%(%)$", "descendants" },
+		{ ":Clone%(%)$", "clone" },
+		{ ":Connect%(", "connection" },
+		{ ":Once%(", "connection" },
+		{ "^tick%(%)$", "now" },
+		{ "^os%.clock%(%)$", "now" },
+		{ "^os%.time%(%)$", "time" },
+		{ "^tostring%(", "text" },
+		{ "^string%.format%(", "text" },
+		{ "^tonumber%(", "number" },
+		{ "^CFrame%.", "cframe" },
+		{ "^Color3%.", "color" },
+		{ "^TweenInfo%.new", "tweenInfo" },
+		{ ":Create%(", "tween" },
+		{ "^coroutine%.create%(", "thread" },
+		{ "^task%.spawn%(", "thread" },
+		{ "^task%.delay%(", "thread" },
+	}
+	for _, rule in simple do
+		if text:find(rule[1]) then
+			return rule[2]
+		end
 	end
 	local required = text:match("^require%((.-)%)$")
 	if required then
@@ -956,9 +991,9 @@ local function computeAccess(ins)
 		end
 		writes = { A }
 	elseif nm == "FORNPREP" then
-		reads, writes = { A, A + 1, A + 2 }, { A + 3 }
+		reads, writes = { A, A + 1, A + 2 }, { A + 2 }
 	elseif nm == "FORNLOOP" then
-		writes = { A + 3 }
+		writes = { A + 2 }
 	elseif nm == "FORGPREP" then
 		reads, writes = { A, A + 1, A + 2 }, regRange(A + 3, ins.nvars)
 	elseif nm == "FORGLOOP" then
@@ -987,6 +1022,8 @@ local function buildInstructionList(p)
 			ins.aux = bit32.band(ins.aux, 0xffff)
 		elseif ins.name == "CALLFB" then
 			ins.name = "CALL"
+		elseif ins.name == "FORGPREP_INEXT" or ins.name == "FORGPREP_NEXT" then
+			ins.name = "FORGPREP"
 		end
 		ins.folded, ins.forGen, ins.selfCapture, ins.captures = nil, nil, nil, nil
 		ins.openFrom, ins.target, ins.nvars = nil, nil, nil
@@ -1118,7 +1155,7 @@ local function buildBlocks(list)
 	return blocks, blockOf
 end
 
-local function analyze(chunk, p)
+local function analyze(chunk, p, upvalNames)
 	local fn = { chunk = chunk, p = p }
 	local list = buildInstructionList(p)
 	fn.list = list
@@ -1342,6 +1379,42 @@ local function analyze(chunk, p)
 		end
 	end
 
+	local declarationOf = {}
+	for _, d in defs do
+		if d.kind == "param" then
+			declarationOf[d.reg .. ":0"] = d
+		elseif d.ins then
+			declarationOf[d.reg .. ":" .. (d.ins.pc + d.ins.len)] = d
+		end
+	end
+
+	local declaredAt = {}
+	for _, lv in p.locVars do
+		declaredAt[lv.reg] = declaredAt[lv.reg] or {}
+		declaredAt[lv.reg][lv.startPc] = lv.name
+	end
+	local activeLocal
+	function activeLocal(reg, pc)
+		for _, lv in p.locVars do
+			if lv.reg == reg and lv.startPc <= pc and pc < lv.endPc then
+				return lv
+			end
+		end
+		return nil
+	end
+
+	for _, d in defs do
+		if d.ins and not (declaredAt[d.reg] and declaredAt[d.reg][d.ins.pc + d.ins.len]) then
+			local lv = activeLocal(d.reg, d.ins.pc)
+			if lv then
+				local decl = declarationOf[d.reg .. ":" .. lv.startPc]
+				if decl and decl ~= d then
+					union(decl.id, d.id)
+				end
+			end
+		end
+	end
+
 	local webs = {}
 	fn.webs = webs
 	for _, d in defs do
@@ -1361,20 +1434,11 @@ local function analyze(chunk, p)
 		end
 	end
 
-	local declaredAt = {}
-	for _, lv in p.locVars do
-		declaredAt[lv.reg] = declaredAt[lv.reg] or {}
-		declaredAt[lv.reg][lv.startPc] = lv.name
-	end
-	local function activeLocal(reg, pc)
-		for _, lv in p.locVars do
-			if lv.reg == reg and lv.startPc <= pc and pc < lv.endPc then
-				return lv.name
-			end
-		end
-		return nil
-	end
 
+	local reserved = {}
+	for _, taken in upvalNames or {} do
+		reserved[taken] = true
+	end
 	fn.paramNames = {}
 	for r = 0, p.numParams - 1 do
 		local name
@@ -1384,7 +1448,12 @@ local function analyze(chunk, p)
 				break
 			end
 		end
-		name = name or ("arg" .. (r + 1))
+		if not name then
+			name = "arg" .. (r + 1)
+			while reserved[name] do
+				name ..= "_"
+			end
+		end
 		fn.paramNames[r + 1] = name
 		local w = paramDefs[r].web
 		w.name = name
@@ -1401,7 +1470,8 @@ local function analyze(chunk, p)
 	for _, d in defs do
 		if d.ins and not d.web.debugName then
 			local pc, len = d.ins.pc, d.ins.len
-			local name = (declaredAt[d.reg] and declaredAt[d.reg][pc + len]) or activeLocal(d.reg, pc)
+			local active = activeLocal(d.reg, pc)
+			local name = (declaredAt[d.reg] and declaredAt[d.reg][pc + len]) or (active and active.name)
 			if name then
 				d.web.debugName = name
 				fn.debugNames[name] = true
@@ -1526,6 +1596,7 @@ local function analyze(chunk, p)
 				if #run > 0 then
 					for _, s in run do
 						s.folded = true
+						s.foldOwner = d
 						for k, u in d.useList do
 							if u == s.idx then
 								table.remove(d.useList, k)
@@ -1555,9 +1626,30 @@ local function analyze(chunk, p)
 		return a.id < b.id
 	end)
 
+	local demoted = {}
+
+	local function feeds(j, consumer, depth)
+		local x = list[j]
+		if #x.defs == 0 or depth > 12 then
+			return false
+		end
+		for _, e in x.defs do
+			if #e.useList ~= 1 then
+				return false
+			end
+			local u = e.useList[1]
+			if u ~= consumer then
+				if u <= j or u > consumer or not feeds(u, consumer, depth + 1) then
+					return false
+				end
+			end
+		end
+		return true
+	end
+
 	local function decide(d)
 		local ins = d.ins
-		if not ins or d.forceLocal or d.web.debugName or LOOP_OPS[ins.name] then
+		if demoted[d] or not ins or d.forceLocal or d.web.debugName or LOOP_OPS[ins.name] then
 			return
 		end
 		if #d.web.defs ~= 1 or #d.useList == 0 then
@@ -1591,7 +1683,21 @@ local function analyze(chunk, p)
 		end
 		d.origin, d.tree, d.readWebs = origin, tree, readWebs
 
-		local always = TRIVIAL_OPS[nm] or nm == "LOADB" or nm == "GETUPVAL" or nm == "NAMECALL"
+		if nm == "NEWCLOSURE" or nm == "DUPCLOSURE" then
+			local childId
+			if nm == "NEWCLOSURE" then
+				childId = p.children[ins.D + 1]
+			else
+				local k = p.constants[ins.D + 1]
+				childId = k and k.protoId
+			end
+			local child = childId and chunk.protos[childId + 1]
+			if child and child.debugName then
+				return
+			end
+		end
+
+		local always = TRIVIAL_OPS[nm] or nm == "LOADB" or nm == "GETUPVAL" or nm == "NAMECALL" or nm == "GETIMPORT"
 			or (nm == "CALL" and (ins.C == 0 or ins.forGen)) or (nm == "GETVARARGS" and ins.B == 0)
 		if always then
 			d.inline = true
@@ -1626,7 +1732,12 @@ local function analyze(chunk, p)
 			if not tree[j] then
 				local x = list[j]
 				if isStmtIns(x) then
-					return
+					if x.defs[1] and x.defs[1].reg > d.reg and feeds(j, useIdx, 0) then
+						d.exempt = d.exempt or {}
+						d.exempt[#d.exempt + 1] = j
+					else
+						return
+					end
 				end
 				for _, e in x.defs do
 					if readWebs[e.web] then
@@ -1638,17 +1749,36 @@ local function analyze(chunk, p)
 		d.inline = true
 	end
 
-	for _, d in order do
-		decide(d)
-	end
+	local changed
+	repeat
+		for _, d in defs do
+			d.inline, d.exempt, d.origin, d.tree, d.readWebs = false, nil, nil, nil, nil
+		end
+		for _, d in order do
+			decide(d)
+		end
+		changed = false
+		for _, d in defs do
+			if d.inline and d.exempt then
+				for _, j in d.exempt do
+					for _, e in list[j].defs do
+						if not e.inline and not demoted[d] then
+							demoted[d] = true
+							changed = true
+						end
+					end
+				end
+			end
+		end
+	until not changed
 
 	fn.isStmtIns = isStmtIns
 	fn.depsOf = depsOf
 	return fn
 end
 
-local function emitFunction(chunk, p, upvalNames, flat)
-	local fn = analyze(chunk, p)
+local function emitFunction(chunk, p, upvalNames, flat, forceTable)
+	local fn = analyze(chunk, p, upvalNames)
 	local list, defs, blockOf = fn.list, fn.defs, fn.blockOf
 	local singleDef, isStmtIns = fn.singleDef, fn.isStmtIns
 
@@ -1672,6 +1802,7 @@ local function emitFunction(chunk, p, upvalNames, flat)
 	local counter = 0
 	local activeLoop = {}
 	local hoisted = {}
+	local tableName
 	local rootList = {}
 	local curList = rootList
 	local regions = { { start = 1, stop = #list + 1 } }
@@ -1705,14 +1836,53 @@ local function emitFunction(chunk, p, upvalNames, flat)
 		return "v" .. counter
 	end
 
+	local function willHoist(w)
+		if w.fixed or w.min < 1 then
+			return false
+		end
+		if blockOf[w.min] ~= blockOf[math.min(w.max, #list)] then
+			return true
+		end
+		for _, d in w.defs do
+			if d.idx == w.min then
+				return false
+			end
+		end
+		return true
+	end
+
+	local debugClaims = {}
+	for _, w in fn.webs do
+		if w.fixed and w.name then
+			debugClaims[w.name] = debugClaims[w.name] or {}
+			table.insert(debugClaims[w.name], w)
+		end
+	end
+
 	local function webName(w, hint)
 		if w.name then
 			return w.name
 		end
 		if w.debugName then
-			w.name = w.debugName
+			local name = w.debugName
+			local claims = debugClaims[name]
+			if not claims then
+				claims = {}
+				debugClaims[name] = claims
+			end
+			for _, other in claims do
+				if w.min <= other.max and other.min <= w.max then
+					name = uniqueName(w.debugName)
+					break
+				end
+			end
+			table.insert(claims, w)
+			w.name = name
 		else
 			w.name = uniqueName(w.hintName or (hint and suggestName(hint)))
+		end
+		if tableName and willHoist(w) then
+			w.name = tableName .. "." .. w.name
 		end
 		return w.name
 	end
@@ -1724,6 +1894,13 @@ local function emitFunction(chunk, p, upvalNames, flat)
 			return buildExpr(first)
 		end
 		return atom(webName(first.web))
+	end
+
+	local function explicitText(e, isLast, open)
+		if isLast and not open and e.isCall then
+			return "(" .. e.s .. ")"
+		end
+		return e.s
 	end
 
 	local function callExpr(ins)
@@ -1742,7 +1919,7 @@ local function emitFunction(chunk, p, upvalNames, flat)
 		end
 		local texts = {}
 		for r = 0, argCount - 1 do
-			texts[#texts + 1] = readExpr(ins, first + r).s
+			texts[#texts + 1] = explicitText(readExpr(ins, first + r), r == argCount - 1, B == 0)
 		end
 		if B == 0 then
 			texts[#texts + 1] = readExpr(ins, ins.openFrom).s
@@ -1752,20 +1929,42 @@ local function emitFunction(chunk, p, upvalNames, flat)
 			local nc = fd.ins
 			local base = wrap(readExpr(nc, nc.B), PREC_ATOM)
 			local name = constString(p, nc.aux)
+			local result
 			if isIdentifier(name) then
-				return atom(base .. ":" .. name .. "(" .. args .. ")")
+				result = atom(base .. ":" .. name .. "(" .. args .. ")")
+			else
+				result = atom(("%s[%s](%s%s)"):format(base, quote(name), base, if args ~= "" then ", " .. args else ""))
 			end
-			return atom(("%s[%s](%s%s)"):format(base, quote(name), base, if args ~= "" then ", " .. args else ""))
+			result.isCall = true
+			return result
 		end
-		return atom(wrap(readExpr(ins, A), PREC_ATOM) .. "(" .. args .. ")")
+		local result = atom(wrap(readExpr(ins, A), PREC_ATOM) .. "(" .. args .. ")")
+		result.isCall = true
+		return result
 	end
 
 	local function tableExpr(d)
-		if not d.fold then
-			return atom("{}")
-		end
 		local parts = {}
-		for _, s in d.fold.sets do
+		local ins = d.ins
+		if ins.name == "DUPTABLE" then
+			local template = p.constants[ins.D + 1]
+			if template and template.values then
+				for q, keyIndex in template.keys do
+					local valueIndex = template.values[q]
+					if valueIndex and valueIndex >= 0 then
+						local key = p.constants[keyIndex + 1]
+						local value = constExpr(p, p.constants[valueIndex + 1]).s
+						if key and key.type == "string" and isIdentifier(key.value) then
+							parts[#parts + 1] = key.value .. " = " .. value
+						else
+							parts[#parts + 1] = ("[%s] = %s"):format(constText(p, key), value)
+						end
+					end
+				end
+			end
+		end
+		local foldedSets = if d.fold then d.fold.sets else {}
+		for _, s in foldedSets do
 			local nm = s.name
 			if nm == "SETTABLEKS" then
 				local key = constString(p, s.aux)
@@ -1778,11 +1977,13 @@ local function emitFunction(chunk, p, upvalNames, flat)
 			elseif nm == "SETTABLEN" then
 				parts[#parts + 1] = ("[%d] = %s"):format(s.C + 1, readExpr(s, s.A).s)
 			elseif nm == "SETTABLE" then
-				parts[#parts + 1] = ("[%s] = %s"):format(readExpr(s, s.C).s, readExpr(s, s.A).s)
+				local suffix = exprKeySuffix(readExpr(s, s.C))
+				local key = if suffix:sub(1, 1) == "." then suffix:sub(2) else suffix
+				parts[#parts + 1] = key .. " = " .. readExpr(s, s.A).s
 			else
 				local count = if s.C == 0 then s.openFrom - s.B else s.C - 1
 				for r = 0, count - 1 do
-					parts[#parts + 1] = readExpr(s, s.B + r).s
+					parts[#parts + 1] = explicitText(readExpr(s, s.B + r), r == count - 1, s.C == 0)
 				end
 				if s.C == 0 then
 					parts[#parts + 1] = readExpr(s, s.openFrom).s
@@ -1790,9 +1991,17 @@ local function emitFunction(chunk, p, upvalNames, flat)
 			end
 		end
 		if #parts == 0 then
-			return atom("{}")
+			return { s = "{}", p = PREC_LITERAL }
 		end
-		return atom("{ " .. table.concat(parts, ", ") .. " }")
+		local oneLine = "{ " .. table.concat(parts, ", ") .. " }"
+		if #oneLine <= 100 and not oneLine:find("\n", 1, true) then
+			return { s = oneLine, p = PREC_LITERAL }
+		end
+		local rows = {}
+		for index, part in parts do
+			rows[index] = indentText(part)
+		end
+		return { s = "{\n" .. table.concat(rows, ",\n") .. "\n}", p = PREC_LITERAL }
 	end
 
 	local function closureExpr(d)
@@ -1821,7 +2030,7 @@ local function emitFunction(chunk, p, upvalNames, flat)
 				names[ci] = webName(defs[ins.readSet[cap.index][1]].web)
 			end
 		end
-		return { s = Moon._renderFunction(chunk, child, names), p = PREC_ATOM, isFunction = true }
+		return { s = Moon._renderFunction(chunk, child, names), p = PREC_LITERAL, isFunction = true }
 	end
 
 	buildExpr = function(d)
@@ -1851,7 +2060,7 @@ local function emitFunction(chunk, p, upvalNames, flat)
 		elseif nm == "GETIMPORT" then
 			return atom(importExpr(p, ins.aux))
 		elseif nm == "GETTABLE" then
-			return atom(wrap(readExpr(ins, B), PREC_ATOM) .. "[" .. readExpr(ins, C).s .. "]")
+			return atom(wrap(readExpr(ins, B), PREC_ATOM) .. exprKeySuffix(readExpr(ins, C)))
 		elseif nm == "GETTABLEKS" then
 			return atom(wrap(readExpr(ins, B), PREC_ATOM) .. indexSuffix(constString(p, ins.aux)))
 		elseif nm == "GETTABLEN" then
@@ -1906,9 +2115,6 @@ local function emitFunction(chunk, p, upvalNames, flat)
 	end
 
 	local function declarable(w, d)
-		if flat then
-			return false
-		end
 		local r = regions[#regions]
 		return w.min >= r.start and w.max < r.stop and w.min == d.idx
 	end
@@ -1928,7 +2134,9 @@ local function emitFunction(chunk, p, upvalNames, flat)
 				statement("local " .. name .. " = " .. e.s)
 			end
 		else
-			hoisted[#hoisted + 1] = name
+			if not name:find(".", 1, true) then
+				hoisted[#hoisted + 1] = name
+			end
 			statement(name .. " = " .. e.s)
 		end
 	end
@@ -1952,7 +2160,7 @@ local function emitFunction(chunk, p, upvalNames, flat)
 				names[k] = webName(w)
 				if not w.declared then
 					w.declared = true
-					if not localForm then
+					if not localForm and not names[k]:find(".", 1, true) then
 						hoisted[#hoisted + 1] = names[k]
 					end
 				end
@@ -1995,6 +2203,9 @@ local function emitFunction(chunk, p, upvalNames, flat)
 	local function compileRange(from, to, defer)
 		for i = from, to - 1 do
 			local ins = list[i]
+			if ins.folded and ins.foldOwner.fold.endIdx == i then
+				materialize(ins.foldOwner, defer)
+			end
 			if not ins.folded and not skip[i] then
 				local nm, A, B, C = ins.name, ins.A, ins.B, ins.C
 				if nm == "CALL" then
@@ -2024,7 +2235,7 @@ local function emitFunction(chunk, p, upvalNames, flat)
 					emitFieldAssign(wrap(readExpr(ins, B), PREC_ATOM), "[" .. (C + 1) .. "]", readExpr(ins, A))
 				elseif nm == "SETTABLE" then
 					local base = wrap(readExpr(ins, B), PREC_ATOM)
-					emitFieldAssign(base, "[" .. readExpr(ins, C).s .. "]", readExpr(ins, A))
+					emitFieldAssign(base, exprKeySuffix(readExpr(ins, C)), readExpr(ins, A))
 				elseif nm == "SETLIST" then
 					local base = wrap(readExpr(ins, A), PREC_ATOM)
 					local count = if C == 0 then ins.openFrom - B else C - 1
@@ -2040,7 +2251,9 @@ local function emitFunction(chunk, p, upvalNames, flat)
 					end
 				else
 					for _, d in ins.defs do
-						materialize(d, defer)
+						if not d.fold then
+							materialize(d, defer)
+						end
 					end
 				end
 			end
@@ -2050,7 +2263,7 @@ local function emitFunction(chunk, p, upvalNames, flat)
 	local function blockPure(blk)
 		for i = blk.start, blk.stop - 1 do
 			local ins = list[i]
-			if isStmtIns(ins) then
+			if isStmtIns(ins) and not (ins.name == "CALL" and ins.C ~= 1) then
 				return false
 			end
 			for _, d in ins.defs do
@@ -2203,11 +2416,15 @@ local function emitFunction(chunk, p, upvalNames, flat)
 		return nil
 	end
 
-	local function emitBody(a, b, loopCtx)
+	local function emitBody(a, b, loopCtx, exitTarget)
 		local saved = curList
 		local body = {}
 		curList = body
-		regions[#regions + 1] = { start = a, stop = b }
+		local parent = regions[#regions]
+		if not exitTarget and parent and parent.stop == b then
+			exitTarget = parent.exitTarget
+		end
+		regions[#regions + 1] = { start = a, stop = b, exitTarget = exitTarget }
 		if loopCtx then
 			loopStack[#loopStack + 1] = loopCtx
 		end
@@ -2443,6 +2660,10 @@ local function emitFunction(chunk, p, upvalNames, flat)
 	end
 
 	local function emitIf(cond, thenStart, elseLabel, limit)
+		local region = regions[#regions]
+		if elseLabel > limit and region.exitTarget and elseLabel == region.exitTarget then
+			elseLabel = limit
+		end
 		if elseLabel > limit then
 			error("if statement runs past its region", 0)
 		end
@@ -2465,9 +2686,9 @@ local function emitFunction(chunk, p, upvalNames, flat)
 			local function thenBody()
 				if isLoadb then
 					skipJump[ji] = true
-					return emitBody(thenStart, elseLabel)
+					return emitBody(thenStart, elseLabel, nil, X)
 				end
-				return emitBody(thenStart, ji)
+				return emitBody(thenStart, ji, nil, X)
 			end
 			if not isLoadb and lp and X == lp.exit then
 				thenB = emitBody(thenStart, ji)
@@ -2481,12 +2702,119 @@ local function emitFunction(chunk, p, upvalNames, flat)
 				thenB = thenBody()
 				elseB = emitBody(elseLabel, X)
 				nextIdx = X
+			elseif X > limit and region.exitTarget == X then
+				thenB = thenBody()
+				elseB = emitBody(elseLabel, limit)
+				nextIdx = limit
 			else
 				error("unsupported jump out of an if body", 0)
 			end
 		end
 		curList[#curList + 1] = { k = "if", cond = cond.s, thenB = thenB, elseB = elseB }
 		return nextIdx
+	end
+
+	local function pureExcept(from, to, except)
+		for i = from, to - 1 do
+			local ins = list[i]
+			if isStmtIns(ins) and not (ins.name == "CALL" and ins.C ~= 1) then
+				return false
+			end
+			for _, d in ins.defs do
+				if not d.inline and d ~= except then
+					local dead = #d.useList == 0 and not d.forceLocal and not d.web.debugName
+					if not dead or ins.name == "CALL" then
+						return false
+					end
+				end
+			end
+		end
+		return true
+	end
+
+	local function valueChain(blk, r, joinAt, members, defers)
+		local last = list[blk.stop]
+		local terminal = isTerminator(last)
+		local d = lastDefOf(blk, r, if terminal then blk.stop - 1 else blk.stop)
+		if not d or d.web.debugName or not pureExcept(blk.start, if terminal then blk.stop else blk.stop + 1, d) then
+			return nil
+		end
+		members[#members + 1] = { blk = blk, def = d, stop = if terminal then blk.stop else blk.stop + 1 }
+		defers[d] = true
+		if not terminal and blk.stop + 1 == joinAt then
+			return function()
+				return buildExpr(d)
+			end
+		end
+		if (last.name == "JUMPIF" or last.name == "JUMPIFNOT") and last.A == r and last.target == joinAt
+			and singleDef(last, r) == d then
+			local nextBlk = blockOf[blk.stop + 1]
+			if not nextBlk or nextBlk.start ~= blk.stop + 1 or #nextBlk.preds ~= 1 then
+				return nil
+			end
+			local rest = valueChain(nextBlk, r, joinAt, members, defers)
+			if not rest then
+				return nil
+			end
+			local isOr = last.name == "JUMPIF"
+			return function()
+				local left, right = buildExpr(d), rest()
+				return if isOr then logicOr(left, right) else logicAnd(left, right)
+			end
+		end
+		return nil
+	end
+
+	local function emitAndOrValue(lastTest, cond)
+		local thenStart, elseLabel = lastTest.F, lastTest.T
+		local rb = blockOf[thenStart]
+		local eb = blockOf[elseLabel]
+		if not rb or not eb or rb.start ~= thenStart or eb.start ~= elseLabel or #rb.preds ~= 1 then
+			return nil
+		end
+		local J2 = list[rb.stop]
+		if J2.name ~= "JUMPIF" or rb.stop + 1 ~= elseLabel then
+			return nil
+		end
+		local joinAt = J2.target
+		local r = J2.A
+		local dA = lastDefOf(rb, r, rb.stop - 1)
+		if not dA or dA.web.debugName or singleDef(J2, r) ~= dA or not pureExcept(rb.start, rb.stop, dA) then
+			return nil
+		end
+		local members, defers = {}, { [dA] = true }
+		local rest = valueChain(eb, r, joinAt, members, defers)
+		if not rest then
+			return nil
+		end
+		local web = dA.web
+		local allowed = { [rb] = true }
+		for _, m in members do
+			if m.def.web ~= web then
+				return nil
+			end
+			allowed[m.blk] = true
+		end
+		local joinBlock = blockOf[joinAt]
+		if joinBlock then
+			for _, pred in joinBlock.preds do
+				if not allowed[pred] then
+					return nil
+				end
+			end
+		end
+		compileRange(rb.start, J2.idx, defers)
+		for _, m in members do
+			compileRange(m.blk.start, m.stop, defers)
+		end
+		assign(dA, logicOr(logicAnd(cond, buildExpr(dA)), rest()))
+		return joinAt
+	end
+
+	local function trivialReturn(idx)
+		local blk = blockOf[idx]
+		local ins = list[idx]
+		return blk and blk.start == idx and blk.stop == idx and ins and ins.name == "RETURN" and ins.B == 1
 	end
 
 	local function emitConditional(blk, limit)
@@ -2549,12 +2877,28 @@ local function emitFunction(chunk, p, upvalNames, flat)
 		if not count then
 			error("could not recover an if condition", 0)
 		end
+		local joined = emitAndOrValue(tests[count], expr)
+		if joined then
+			return joined
+		end
+		if tests[count].T > limit and trivialReturn(tests[count].T) then
+			local returnTarget = tests[count].T
+			local taken, takenExpr = resolveChain(tests, false, function(t)
+				return t.T == returnTarget
+			end)
+			if taken then
+				curList[#curList + 1] = { k = "if", cond = takenExpr.s, thenB = { { k = "line", s = "return" } } }
+				return tests[taken].F
+			end
+		end
 		return emitIf(expr, tests[count].F, tests[count].T, limit)
 	end
 
 	local function jumpStatement(last)
 		local lp = loopStack[#loopStack]
-		if lp and last.target == lp.exit then
+		if trivialReturn(last.target) then
+			statement("return")
+		elseif lp and last.target == lp.exit then
 			statement("break")
 		elseif lp and last.target == lp.continue then
 			statement("continue")
@@ -2581,7 +2925,7 @@ local function emitFunction(chunk, p, upvalNames, flat)
 			local values = {}
 			local count = if last.B == 0 then last.openFrom - last.A else last.B - 1
 			for r = 0, count - 1 do
-				values[#values + 1] = readExpr(last, last.A + r).s
+				values[#values + 1] = explicitText(readExpr(last, last.A + r), r == count - 1, last.B == 0)
 			end
 			if last.B == 0 then
 				values[#values + 1] = readExpr(last, last.openFrom).s
@@ -2651,13 +2995,18 @@ local function emitFunction(chunk, p, upvalNames, flat)
 		local name = webName(w)
 		if not w.declared then
 			w.declared = true
-			hoisted[#hoisted + 1] = name
+			if not name:find(".", 1, true) then
+				hoisted[#hoisted + 1] = name
+			end
 		end
 		return name
 	end
 
 	local function hiddenVar(base)
 		local name = uniqueName(base)
+		if tableName then
+			return tableName .. "." .. name
+		end
 		hoisted[#hoisted + 1] = name
 		return name
 	end
@@ -2681,6 +3030,7 @@ local function emitFunction(chunk, p, upvalNames, flat)
 			if #blk.preds > 0 or blk.index == 1 then
 				local body = {}
 				curList = body
+				regions[#regions + 1] = { start = blk.start, stop = blk.stop + 1 }
 				local last = list[blk.stop]
 				local nm = last.name
 				local terminal = isTerminator(last)
@@ -2692,7 +3042,7 @@ local function emitFunction(chunk, p, upvalNames, flat)
 					local values = {}
 					local count = if last.B == 0 then last.openFrom - last.A else last.B - 1
 					for r = 0, count - 1 do
-						values[#values + 1] = readExpr(last, last.A + r).s
+						values[#values + 1] = explicitText(readExpr(last, last.A + r), r == count - 1, last.B == 0)
 					end
 					if last.B == 0 then
 						values[#values + 1] = readExpr(last, last.openFrom).s
@@ -2762,16 +3112,29 @@ local function emitFunction(chunk, p, upvalNames, flat)
 				else
 					error("cannot flatten " .. nm, 0)
 				end
+				regions[#regions] = nil
 				cases[#cases + 1] = { id = blk.start, body = body }
 			end
 		end
 
 		curList = rootList
+		if tableName then
+			statement("local " .. tableName .. " = {}")
+		end
 		statement("local " .. pcName .. " = 1")
 		rootList[#rootList + 1] = { k = "flat", pc = pcName, cases = cases }
 	end
 
 	if flat then
+		local crossing = 0
+		for _, w in fn.webs do
+			if willHoist(w) then
+				crossing += 1
+			end
+		end
+		if forceTable or crossing > (Moon.flatTableThreshold or 150) then
+			tableName = uniqueName("vars")
+		end
 		emitFlat()
 	else
 		emitRange(1, #list + 1)
@@ -2831,6 +3194,10 @@ local function renderStatements(stmts, depth, out)
 			out[#out + 1] = pad .. "for " .. node.header .. " do"
 			renderStatements(node.body, depth + 1, out)
 			out[#out + 1] = pad .. "end"
+		elseif k == "do" then
+			out[#out + 1] = pad .. "do"
+			renderStatements(node.body, depth + 1, out)
+			out[#out + 1] = pad .. "end"
 		elseif k == "flat" then
 			out[#out + 1] = pad .. "while true do"
 			for n, case in node.cases do
@@ -2847,7 +3214,132 @@ local function renderStatements(stmts, depth, out)
 	end
 end
 
+local function nodeText(node)
+	local out = {}
+	renderStatements({ node }, 0, out)
+	return table.concat(out, "\n")
+end
+
+local function declaredNames(node)
+	if node.k ~= "line" then
+		return nil
+	end
+	local fnName = node.s:match("^local function ([%a_][%w_]*)")
+	if fnName then
+		return { fnName }
+	end
+	local list = node.s:match("^local ([%a_][%w_, ]*) =") or node.s:match("^local ([%a_][%w_]*)$")
+	if not list then
+		return nil
+	end
+	local names = {}
+	for name in list:gmatch("[%a_][%w_]*") do
+		if name ~= "_" then
+			names[#names + 1] = name
+		end
+	end
+	return names
+end
+
+local LOCAL_SOFT_LIMIT = 170
+local SHORT_LIFETIME = 40
+
+local function asAssignment(node)
+	local text = node.s
+	if text:match("^local function ") then
+		text = text:gsub("^local function ([%a_][%w_]*)", "%1 = function", 1)
+	elseif text:match("^local [%a_][%w_]*$") then
+		return nil
+	else
+		text = text:gsub("^local ", "", 1)
+	end
+	return { k = "line", s = text }
+end
+
+local function scopeLocals(stmts)
+	for _, node in stmts do
+		for _, key in { "thenB", "elseB", "body" } do
+			if node[key] then
+				node[key] = scopeLocals(node[key])
+			end
+		end
+	end
+
+	local declarations = 0
+	for _, node in stmts do
+		if declaredNames(node) then
+			declarations += 1
+		end
+	end
+	if declarations <= (Moon.localSoftLimit or LOCAL_SOFT_LIMIT) then
+		return stmts
+	end
+
+	local texts = {}
+	for index, node in stmts do
+		texts[index] = nodeText(node)
+	end
+	local function lastUse(name, from)
+		local pattern = "%f[%w_]" .. name .. "%f[^%w_]"
+		for index = #stmts, from + 1, -1 do
+			if texts[index]:find(pattern) then
+				return index
+			end
+		end
+		return from
+	end
+
+	local result = {}
+	local i = 1
+	while i <= #stmts do
+		local names = declaredNames(stmts[i])
+		local last = i
+		if names then
+			for _, name in names do
+				last = math.max(last, lastUse(name, i))
+			end
+		end
+		if not names or last == i or last >= #stmts or last - i > SHORT_LIFETIME then
+			result[#result + 1] = stmts[i]
+			i += 1
+		else
+			local group = { stmts[i] }
+			local forward = {}
+			for k = i + 1, last do
+				local node = stmts[k]
+				local inner = declaredNames(node)
+				local escapes = false
+				if inner then
+					for _, name in inner do
+						if lastUse(name, k) > last then
+							escapes = true
+						end
+					end
+				end
+				if escapes then
+					for _, name in inner do
+						forward[#forward + 1] = name
+					end
+					local converted = asAssignment(node)
+					if converted then
+						group[#group + 1] = converted
+					end
+				else
+					group[#group + 1] = node
+				end
+			end
+			if #forward > 0 then
+				result[#result + 1] = { k = "line", s = "local " .. table.concat(forward, ", ") }
+			end
+			result[#result + 1] = { k = "do", body = group }
+			i = last + 1
+		end
+	end
+	return result
+end
+
 local function renderBody(stmts, hoisted)
+	stmts = scopeLocals(stmts)
 	local out = {}
 	if #hoisted > 0 then
 		out[1] = "local " .. table.concat(hoisted, ", ")
@@ -2857,12 +3349,23 @@ local function renderBody(stmts, hoisted)
 end
 
 local function emitWithFallback(chunk, p, upvalNames)
-	local ok, stmts, hoisted, params = pcall(emitFunction, chunk, p, upvalNames, false)
+	local ok, stmts, hoisted, params
+	if Moon.forceFlat then
+		ok, stmts = false, "forced"
+	else
+		ok, stmts, hoisted, params = pcall(emitFunction, chunk, p, upvalNames, false)
+	end
 	if ok then
 		return true, stmts, hoisted, params, nil
 	end
 	local reason = tostring(stmts)
-	local okFlat, flatStmts, flatHoisted, flatParams = pcall(emitFunction, chunk, p, upvalNames, true)
+	local okFlat, flatStmts, flatHoisted, flatParams = pcall(emitFunction, chunk, p, upvalNames, true, false)
+	if okFlat and #flatHoisted > (Moon.flatTableThreshold or 150) then
+		local okTable, tableStmts, tableHoisted, tableParams = pcall(emitFunction, chunk, p, upvalNames, true, true)
+		if okTable then
+			flatStmts, flatHoisted, flatParams = tableStmts, tableHoisted, tableParams
+		end
+	end
 	if okFlat then
 		local note = ("-- control flow could not be structured (%s); rebuilt as a state machine"):format(reason)
 		return true, flatStmts, flatHoisted, flatParams, note

@@ -3723,8 +3723,9 @@ end
 --- @field SaveBytecode boolean -- If the executor supports `getscriptbytecode`, add the compiled script data (bytecode) to `Source` as a comment. You can decompile it later. This respects `DecompileIgnore`. ___Default:___ false
 --- @field DecompileTimeout number -- How many seconds one decompile call can take. If it takes longer, the script stops waiting and writes a timeout message in `Source`. Set to -1 to disable the timeout. ___Default:___ 10
 --- @field DecompileThreads number -- How many scripts to decompile at the same time before saving. 1 decompiles one by one while saving. Higher values only help if your executor's `decompile` yields, and need `scriptcache` and `getscriptbytecode`. ___Default:___ 1
---- @field UseBuiltinDecompiler boolean -- Use MoonDecompiler (a decompiler downloaded from `BuiltinDecompilerURL`) instead of the executor's `decompile`. It is also used automatically when the executor has no `decompile` but has `getscriptbytecode`. Functions it cannot rebuild are saved as a commented disassembly. ___Default:___ false
---- @field BuiltinDecompilerURL string -- Where MoonDecompiler is downloaded from when it is needed. ___Default:___ the USSI-Redux repository
+--- @field Decompiler string -- Which decompiler turns scripts back into source. `"auto"` uses the executor's `decompile`, and uses MoonDecompiler (a LuaU decompiler downloaded from `BuiltinDecompilerURL`) when the executor has none or it fails. `"executor"` only uses the executor's `decompile`. `"moon"` only uses MoonDecompiler. ___Default:___ "auto"
+--- @field CustomDecompiler ((script: Instance, bytecode: string?) -> string) | {decompile: (script: Instance, bytecode: string?) -> string} | false -- Your own decompiler, that can replace the default decompile function with a custom one. ___Default:___ false
+--- @field BuiltinDecompilerURL string | false -- Optional. Where MoonDecompiler is downloaded from when it is needed. Leave it false and the USSI-Redux repository is used automatically (the `main` branch first, then `experimental`). ___Default:___ false
 --- @field BytecodeTimeout number -- How many seconds a `getscriptbytecode` call can take. If it takes longer, the script stops waiting and skips the bytecode for that script. Set to -1 to disable the timeout. ___Default:___ 3
 --- @field DecompileIgnore {Instance | string} | {[Instance | string]: boolean | {[string]: boolean}} -- Skip decompiling matched [Instance]s and their children. `Source` becomes a short ignored message. You can pass an [Instance], a class name, or `ClassName = {Name1, Name2}`. Set an [Instance] to `false` to skip only that instance, not its children. ___Default:___ {TextChatService}
 --- @field SourceCache {[Instance]: string} | false -- Source text to use for these scripts as-is instead of decompiling them. ___Default:___ false
@@ -3889,8 +3890,9 @@ local function synsaveinstance(...)
 		Decompile = true,
 		DecompileTimeout = 10,
 		DecompileThreads = 1,
-		UseBuiltinDecompiler = false,
-		BuiltinDecompilerURL = "https://raw.githubusercontent.com/andrewexec/USSI-Redux/main/Tools/MoonDecompiler/MoonDecompiler.luau",
+		Decompiler = "auto",
+		CustomDecompiler = false,
+		BuiltinDecompilerURL = false,
 		DecompileJobless = false,
 		RecoverScriptsFromAssets = true,
 		-- decomptype = "",
@@ -4876,15 +4878,83 @@ local function synsaveinstance(...)
 		end
 	end
 
-	local decompileFn = decompile
-	if OPTIONS.Decompile and getscriptbytecode and (OPTIONS.UseBuiltinDecompiler or not decompile) then
-		local loaded, moon = pcall(function()
-			return loadstring((game :: any):HttpGet(OPTIONS.BuiltinDecompilerURL, true), "MoonDecompiler")()
-		end)
-		if loaded and type(moon) == "table" and moon.decompile then
-			decompileFn = function(script)
-				return moon.decompile(script)
+	local moonModule
+	local function loadMoon()
+		if moonModule == nil then
+			local urls = {}
+			if type(OPTIONS.BuiltinDecompilerURL) == "string" and OPTIONS.BuiltinDecompilerURL ~= "" then
+				table.insert(urls, OPTIONS.BuiltinDecompilerURL)
 			end
+			for _, branch in { "main", "experimental" } do
+				table.insert(
+					urls,
+					"https://raw.githubusercontent.com/andrewexec/USSI-Redux/" .. branch .. "/Tools/MoonDecompiler/MoonDecompiler.luau"
+				)
+			end
+
+			moonModule = false
+			for _, url in urls do
+				local loaded, module = pcall(function()
+					return loadstring((game :: any):HttpGet(url, true), "MoonDecompiler")()
+				end)
+				if loaded and type(module) == "table" and module.decompile then
+					moonModule = module
+					break
+				end
+			end
+		end
+		return moonModule
+	end
+
+	local decompilerMode = string.lower(tostring(OPTIONS.Decompiler))
+	local custom = OPTIONS.CustomDecompiler
+	if type(custom) == "table" then
+		local customTable = custom
+		custom = type(customTable.decompile) == "function" and function(script, bytecode)
+			return customTable.decompile(script, bytecode)
+		end or nil
+	end
+
+	local decompilerAttempts = {}
+	if type(custom) == "function" then
+		table.insert(decompilerAttempts, function(script)
+			local bytecode
+			if getscriptbytecode then
+				local ok, result = pcall(getscriptbytecode, script)
+				if ok then
+					bytecode = result
+				end
+			end
+			return custom(script, bytecode)
+		end)
+	end
+	if decompilerMode ~= "moon" and decompile then
+		table.insert(decompilerAttempts, decompile)
+	end
+	if decompilerMode ~= "executor" and getscriptbytecode then
+		table.insert(decompilerAttempts, function(script)
+			local moon = loadMoon()
+			if not moon then
+				error("MoonDecompiler could not be downloaded", 0)
+			end
+			return moon.decompile(script)
+		end)
+	end
+
+	local decompileFn
+	if #decompilerAttempts > 0 then
+		decompileFn = function(script)
+			local lastError
+			for _, attempt in decompilerAttempts do
+				local ok, result = pcall(attempt, script)
+				if ok and type(result) == "string" and result ~= "" then
+					return result
+				end
+				if not ok then
+					lastError = result
+				end
+			end
+			error(lastError or "Empty Output", 0)
 		end
 	end
 
