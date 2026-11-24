@@ -3746,6 +3746,8 @@ export type SaveInstanceOptions = {
 	DecompileIgnore: ({Instance | string} | {[Instance | string]: boolean | {[string]: boolean}})?,
 	SourceCache: ({[Instance]: string} | false)?,
 	DecompileJobless: (boolean)?,
+	SkipCrashedScripts: (boolean)?,
+	RetryCrashedScripts: (boolean)?,
 	scriptcache: (boolean)?,
 	RecoverScriptsFromAssets: (boolean)?,
 	IsolatePlayers: (boolean)?,
@@ -3856,6 +3858,8 @@ export type SaveInstanceOptions = {
 --- @field DecompileIgnore {Instance | string} | {[Instance | string]: boolean | {[string]: boolean}} -- Skip decompiling matched [Instance]s and their children. `Source` becomes a short ignored message. You can pass an [Instance], a class name, or `ClassName = {Name1, Name2}`. Set an [Instance] to `false` to skip only that instance, not its children. ___Default:___ {TextChatService}
 --- @field SourceCache {[Instance]: string} | false -- Source text to use for these scripts as-is instead of decompiling them. ___Default:___ false
 --- @field DecompileJobless boolean -- Only use scripts that are already in the decompile cache. Missing scripts get a short not-found message. This turns on `scriptcache`. ___Default:___ false
+--- @field SkipCrashedScripts boolean -- Remember which script was being decompiled. If the executor crashed or the game closed mid-decompile, the next run skips that script (its `Source` says so) instead of crashing again, so rerunning the save gets past the crash point. The list is kept in `EXEC_STATE.json`. ___Default:___ true
+--- @field RetryCrashedScripts boolean -- Forget the scripts remembered by `SkipCrashedScripts` and try to decompile them again. Use this if a script was skipped by mistake, for example when you closed the game during a save. ___Default:___ false
 --- @field scriptcache boolean -- If the executor supports `getscriptbytecode`, cache decompiled code. This avoids decompiling the same script twice. The cache stays after the script reloads. ___Default:___ true
 --- @field RecoverScriptsFromAssets boolean -- Recover the original `Source` of scripts that were published as assets. Changes made after publishing are not included. ___Default:___ true
 --- @field IsolatePlayers boolean -- Put every [Player] under a top-level `"Players"` Folder instead of inside the [Players] service. This turns on `SaveNotCreatable`. If both are on, this option is used instead of `IsolateLocalPlayer`. ___Default:___ false
@@ -4020,6 +4024,8 @@ local function synsaveinstance(...: any): any
 		CustomDecompiler = false,
 		BuiltinDecompilerURL = false,
 		DecompileJobless = false,
+		SkipCrashedScripts = true,
+		RetryCrashedScripts = false,
 		RecoverScriptsFromAssets = true,
 		-- decomptype = "",
 		scriptcache = true,
@@ -4562,6 +4568,25 @@ local function synsaveinstance(...: any): any
 			return
 		end
 		pcall(writefile, EXEC_STATE_FILE, service.HttpService:JSONEncode({ [EXEC_STATE_KEY] = ExecState }))
+	end
+
+	local crashedScripts: { [string]: boolean } = ExecState["crashedScripts"] or {}
+	local decompiling: { [string]: boolean } = ExecState["decompiling"] or {}
+	ExecState["crashedScripts"] = crashedScripts
+	ExecState["decompiling"] = decompiling
+	do
+		local changed = next(decompiling) ~= nil
+		for key in decompiling do
+			crashedScripts[key] = true
+		end
+		table.clear(decompiling)
+		if OPTIONS.RetryCrashedScripts and next(crashedScripts) ~= nil then
+			table.clear(crashedScripts)
+			changed = true
+		end
+		if changed then
+			saveExecState()
+		end
 	end
 
 	local writerFallback: string? -- ! nil | "writefile" | "xml" when a broken writer forced a switch
@@ -5129,6 +5154,16 @@ local function synsaveinstance(...: any): any
 
 			end
 
+			local crashKey: string = ""
+			if OPTIONS.SkipCrashedScripts and writefile then
+				crashKey =script.ClassName .. ":" .. script:GetFullName()
+				if crashedScripts[crashKey] then
+					return "-- Skipped: this game crashed mid-decompile! (set RetryCrashedScripts = true to try again)"
+				end
+				decompiling[crashKey] = true
+				saveExecState()
+			end
+
 			if bytecode then
 				inflight[bytecode] = true
 			end
@@ -5140,6 +5175,10 @@ local function synsaveinstance(...: any): any
 			end
 			if bytecode then
 				inflight[bytecode] = nil
+			end
+			if crashKey ~= "" then
+				decompiling[crashKey] = nil
+				saveExecState()
 			end
 			if not result then
 				ok, result = false, "Empty Output"
