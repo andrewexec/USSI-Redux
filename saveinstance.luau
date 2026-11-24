@@ -5525,8 +5525,9 @@ local function synsaveinstance(...)
 			return cached
 		end
 
-		local prop_list = {}
 		local layer = ClassList[className]
+		local prop_list = layer and table.clone(layer.Properties) or {}
+		layer = layer and ClassList[layer.Superclass]
 		while layer do
 			local layer_props = layer.Properties
 			table.move(layer_props, 1, #layer_props, #prop_list + 1, prop_list)

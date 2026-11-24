@@ -1,7 +1,7 @@
 # TO-DOs
 
 - [x] Look into adding support for Binary Format Output (rbxl/rbxm)
-- [ ] Add table.clone instead {} in some cases if possible
+- [x] Add table.clone instead {} in some cases if possible
 - [x] Support for Model files:
   - [x] rbxmx (xml)
   - [x] rbxm (binary)
