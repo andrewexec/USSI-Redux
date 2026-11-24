@@ -491,7 +491,7 @@ local function zigzag32(v)
 end
 
 local function splitU64(v)
-	local hi = math.floor(v / 4294967296)
+	local hi = v // 4294967296
 	return hi, v - hi * 4294967296
 end
 

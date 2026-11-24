@@ -11,7 +11,7 @@
   - [x] ~~Interpolated strings instead of concat~~ Slower
   - [ ] Type-checking (😩🙀)
   - [ ] ~~`if-then-else` expressions~~ No reason to
-  - [ ] Floor division
+  - [x] Floor division
 
 - [x] Speed things up as much as possible
   - Requires benchmarks
