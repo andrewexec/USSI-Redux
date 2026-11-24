@@ -3723,6 +3723,8 @@ end
 --- @field SaveBytecode boolean -- If the executor supports `getscriptbytecode`, add the compiled script data (bytecode) to `Source` as a comment. You can decompile it later. This respects `DecompileIgnore`. ___Default:___ false
 --- @field DecompileTimeout number -- How many seconds one decompile call can take. If it takes longer, the script stops waiting and writes a timeout message in `Source`. Set to -1 to disable the timeout. ___Default:___ 10
 --- @field DecompileThreads number -- How many scripts to decompile at the same time before saving. 1 decompiles one by one while saving. Higher values only help if your executor's `decompile` yields, and need `scriptcache` and `getscriptbytecode`. ___Default:___ 1
+--- @field UseBuiltinDecompiler boolean -- Use MoonDecompiler (a decompiler downloaded from `BuiltinDecompilerURL`) instead of the executor's `decompile`. It is also used automatically when the executor has no `decompile` but has `getscriptbytecode`. Functions it cannot rebuild are saved as a commented disassembly. ___Default:___ false
+--- @field BuiltinDecompilerURL string -- Where MoonDecompiler is downloaded from when it is needed. ___Default:___ the USSI-Redux repository
 --- @field BytecodeTimeout number -- How many seconds a `getscriptbytecode` call can take. If it takes longer, the script stops waiting and skips the bytecode for that script. Set to -1 to disable the timeout. ___Default:___ 3
 --- @field DecompileIgnore {Instance | string} | {[Instance | string]: boolean | {[string]: boolean}} -- Skip decompiling matched [Instance]s and their children. `Source` becomes a short ignored message. You can pass an [Instance], a class name, or `ClassName = {Name1, Name2}`. Set an [Instance] to `false` to skip only that instance, not its children. ___Default:___ {TextChatService}
 --- @field SourceCache {[Instance]: string} | false -- Source text to use for these scripts as-is instead of decompiling them. ___Default:___ false
@@ -3887,6 +3889,8 @@ local function synsaveinstance(...)
 		Decompile = true,
 		DecompileTimeout = 10,
 		DecompileThreads = 1,
+		UseBuiltinDecompiler = false,
+		BuiltinDecompilerURL = "https://raw.githubusercontent.com/andrewexec/USSI-Redux/main/Tools/MoonDecompiler/MoonDecompiler.luau",
 		DecompileJobless = false,
 		RecoverScriptsFromAssets = true,
 		-- decomptype = "",
@@ -4872,12 +4876,24 @@ local function synsaveinstance(...)
 		end
 	end
 
+	local decompileFn = decompile
+	if OPTIONS.Decompile and getscriptbytecode and (OPTIONS.UseBuiltinDecompiler or not decompile) then
+		local loaded, moon = pcall(function()
+			return loadstring((game :: any):HttpGet(OPTIONS.BuiltinDecompilerURL, true), "MoonDecompiler")()
+		end)
+		if loaded and type(moon) == "table" and moon.decompile then
+			decompileFn = function(script)
+				return moon.decompile(script)
+			end
+		end
+	end
+
 	if not OPTIONS.Decompile then
 		ldecompile = function()
 			return "-- Decompiling is disabled"
 		end
-	elseif decompile then
-		local mainDecomp = makeTimeoutHandler(OPTIONS.DecompileTimeout, decompile, "Decompiler timed out")
+	elseif decompileFn then
+		local mainDecomp = makeTimeoutHandler(OPTIONS.DecompileTimeout, decompileFn, "Decompiler timed out")
 		local inflight = {}
 
 		local function decompileScript(script, decomp, bytecodeOf, quiet)
@@ -4971,7 +4987,7 @@ local function synsaveinstance(...)
 
 			local live = math.min(threads, total)
 			for _ = 1, live do
-				local decomp = makeTimeoutHandler(OPTIONS.DecompileTimeout, decompile, "Decompiler timed out")
+				local decomp = makeTimeoutHandler(OPTIONS.DecompileTimeout, decompileFn, "Decompiler timed out")
 				local bytecodeOf = makeTimeoutHandler(OPTIONS.BytecodeTimeout, getscriptbytecode)
 				task.spawn(function()
 					while true do
