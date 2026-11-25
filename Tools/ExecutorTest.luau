@@ -397,6 +397,57 @@ test("crash protection: RetryCrashedScripts decompiles it again", function()
 		`skipped text {skipped and "present" or "gone"}, list {stillMarked and "not empty" or "empty"}`
 end)
 
+test("SaveSpecialProperties keeps only the properties you list", function()
+	local function saveXml(options)
+		options.XML = true
+		local ok, _, path = saveTo("special", options)
+		local data = ok and read(path)
+		remove(path)
+		return data
+	end
+	local function names(data)
+		local set = {}
+		for name in string.gmatch(data, 'name="([^"]+)"') do
+			set[name] = true
+		end
+		return set
+	end
+
+	local all = saveXml({})
+	local none = saveXml({ SaveSpecialProperties = {} })
+	if not (all and none) then
+		return false, "one of the saves failed"
+	end
+
+	local allNames, noneNames = names(all), names(none)
+	local dropped = {}
+	for name in allNames do
+		if not noneNames[name] then
+			table.insert(dropped, name)
+		end
+	end
+	table.sort(dropped)
+	if #dropped == 0 then
+		return nil, `an empty list changed nothing but values, so no property name was dropped (all {#all}, empty {#none} bytes)`
+	end
+
+	local wanted = dropped[1]
+	local only = saveXml({ SaveSpecialProperties = { wanted } })
+	if not only then
+		return false, "the save with a list failed"
+	end
+	local onlyNames = names(only)
+	local keptWanted = onlyNames[wanted] == true
+	local droppedOthers = 0
+	for _, name in dropped do
+		if name ~= wanted and not onlyNames[name] then
+			droppedOthers += 1
+		end
+	end
+	return keptWanted and none ~= all,
+		`empty list dropped {#dropped} ({table.concat(dropped, ", ", 1, math.min(#dropped, 6))}); listing "{wanted}" kept it: {tostring(keptWanted)}; other dropped ones still gone: {droppedOthers}/{#dropped - 1}`
+end)
+
 test("no DUPLICATE option or alias warnings", function()
 	local found = {}
 	for _, message in warningOrder do

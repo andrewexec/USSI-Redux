@@ -140,6 +140,11 @@
             level: 3,
           },
           {
+            value: "<code>SaveSpecialProperties</code>",
+            id: "savespecialproperties",
+            level: 3,
+          },
+          {
             value: "<code>AlternativeWritefile</code>",
             id: "alternativewritefile",
             level: 3,
@@ -1233,6 +1238,41 @@
                 "Do not use the executor function ",
                 (0, i.jsx)(s.code, { children: "gethiddenproperty" }),
                 ". Other property reads still work. This can help if your executor crashes or the file is corrupted.",
+              ],
+            }),
+            "\n",
+            (0, i.jsx)(s.h3, {
+              id: "savespecialproperties",
+              children: (0, i.jsx)(s.code, {
+                children: "SaveSpecialProperties",
+              }),
+            }),
+            "\n",
+            (0, i.jsxs)(s.p, {
+              children: [
+                "Type: ",
+                (0, i.jsx)(s.code, { children: "{string} | false" }),
+                ". Default: ",
+                (0, i.jsx)(s.code, { children: "false" }),
+                ".",
+              ],
+            }),
+            "\n",
+            (0, i.jsxs)(s.p, {
+              children: [
+                "Choose which special properties to save. Special properties are hidden or not scriptable, so they need the executor function ",
+                (0, i.jsx)(s.code, { children: "gethiddenproperty" }),
+                ". Pass a list of property names, for example ",
+                (0, i.jsx)(s.code, {
+                  children: '{"Color3uint8", "SmoothGrid"}',
+                }),
+                ", and only those are read with ",
+                (0, i.jsx)(s.code, { children: "gethiddenproperty" }),
+                ". Other special properties are skipped, which avoids crashes from properties you do not need. An empty list skips them all. ",
+                (0, i.jsx)(s.code, { children: "false" }),
+                " saves them all. This is ignored if ",
+                (0, i.jsx)(s.code, { children: "IgnoreSpecialProperties" }),
+                " is on.",
               ],
             }),
             "\n",

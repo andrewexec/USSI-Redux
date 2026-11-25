@@ -231,6 +231,12 @@ Type: `boolean`. Default: `false`.
 
 Do not use the executor function `gethiddenproperty`. Other property reads still work. This can help if your executor crashes or the file is corrupted.
 
+### `SaveSpecialProperties`
+
+Type: `{string} | false`. Default: `false`.
+
+Choose which special properties to save. Special properties are hidden or not scriptable, so they need the executor function `gethiddenproperty`. Pass a list of property names, for example `{"Color3uint8", "SmoothGrid"}`, and only those are read with `gethiddenproperty`. Other special properties are skipped, which avoids crashes from properties you do not need. An empty list skips them all. `false` saves them all. This is ignored if `IgnoreSpecialProperties` is on.
+
 ### `AlternativeWritefile`
 
 Type: `boolean`. Default: `true`.

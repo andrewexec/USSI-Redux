@@ -124,6 +124,7 @@ The same state file remembers which `gethiddenproperty` types crashed or failed 
 | `BoostFPS` | `false` | Turns off 3D rendering while saving. `SafeMode` also turns it on. |
 | `Anonymous` | `false` | Risky. Removes your name and user ID from the file. |
 | `IgnoreSpecialProperties` | `false` | Don't use `gethiddenproperty`. Helps if your executor crashes or the file is corrupted. |
+| `SaveSpecialProperties` | `false` | Save only the special properties you list, for example `{"Color3uint8"}`. An empty list skips them all. |
 
 `saveinstance` does not modify game state.
 

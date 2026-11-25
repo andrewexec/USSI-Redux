@@ -102,6 +102,7 @@ Structure of the main `CustomOptions` table.
 | `IgnoreNotArchivable` | `boolean` | `true` | Saves instances even when `Archivable` is `false`. |
 | `IgnorePropertiesOfNotScriptsOnScriptsMode` | `boolean` | `false` | Ignores properties on non-script instances when `mode` is `"scripts"`. |
 | `IgnoreSpecialProperties` | `boolean` | `false` | Avoids `gethiddenproperty` calls in favor of fallbacks; helps prevent crashes or file corruption. |
+| `SaveSpecialProperties` | `{string} \| false` | `false` | Choose which special properties to save. Special properties are hidden or not scriptable, so they need the executor function `gethiddenproperty`. Pass a list of property names, for example `{"Color3uint8", "SmoothGrid"}`, and only those are read with `gethiddenproperty`. Other special properties are skipped, which avoids crashes from properties you do not need. An empty list skips them all. `false` saves them all. This is ignored if `IgnoreSpecialProperties` is on. |
 | `IsolateStarterPlayer` | `boolean` | `false` | Saves `StarterPlayer` into a separate folder and skips children of the original instance. |
 | `IsolatePlayers` | `boolean` | `false` | Saves all players into a separate folder and skips children of the original instance. |
 | `IsolateLocalPlayer` | `boolean` | `false` | Saves `LocalPlayer` into a separate folder and ignores the original instance. |
