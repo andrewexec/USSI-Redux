@@ -365,7 +365,6 @@ Old option names that still work. Each one sets the option shown beside it.
 | `Compression` | `CompressionMode` |
 | `Debug` | `__DEBUG_MODE` |
 | `DecompileScripts` | `Decompile` |
-| `Decompiler` | `Decompile` |
 | `DecompilerTimeout` | `DecompileTimeout` |
 | `EmbedBytecode` | `SaveBytecode` |
 | `FileName` | `FilePath` |

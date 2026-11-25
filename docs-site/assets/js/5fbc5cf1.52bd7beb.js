@@ -1901,20 +1901,6 @@
                       children: [
                         (0, i.jsx)(s.td, {
                           children: (0, i.jsx)(s.code, {
-                            children: "Decompiler",
-                          }),
-                        }),
-                        (0, i.jsx)(s.td, {
-                          children: (0, i.jsx)(s.code, {
-                            children: "Decompile",
-                          }),
-                        }),
-                      ],
-                    }),
-                    (0, i.jsxs)(s.tr, {
-                      children: [
-                        (0, i.jsx)(s.td, {
-                          children: (0, i.jsx)(s.code, {
                             children: "DecompilerTimeout",
                           }),
                         }),

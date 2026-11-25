@@ -3905,7 +3905,6 @@ export type SaveInstanceOptions = {
 --- @field Compression string -- `CompressionMode`
 --- @field Debug string -- `__DEBUG_MODE`
 --- @field DecompileScripts string -- `Decompile`
---- @field Decompiler string -- `Decompile`
 --- @field DecompilerTimeout string -- `DecompileTimeout`
 --- @field EmbedBytecode string -- `SaveBytecode`
 --- @field FileName string -- `FilePath`
@@ -4125,7 +4124,6 @@ local function synsaveinstance(...: any): any
 			Compression = "CompressionMode",
 			Debug = "__DEBUG_MODE",
 			DecompileScripts = "Decompile",
-			Decompiler = "Decompile",
 			DecompilerTimeout = "DecompileTimeout",
 			EmbedBytecode = "SaveBytecode",
 			FileName = "FilePath",
