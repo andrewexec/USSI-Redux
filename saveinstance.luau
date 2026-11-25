@@ -798,7 +798,7 @@ Attribute_Encoders = {
 	["nil"] = function(raw: any)
 		return EMPTY_BUFFER, 0
 	end,
-	["string"] = function(raw: any)
+	["string"] = function(raw: string)
 		local raw_len = #raw
 		local len = 4 + raw_len
 
@@ -809,14 +809,14 @@ Attribute_Encoders = {
 
 		return b, len
 	end,
-	["boolean"] = function(raw: any)
+	["boolean"] = function(raw: boolean)
 		local b = buffer.create(1)
 
 		buffer.writeu8(b, 0, raw and 1 or 0)
 
 		return b, 1
 	end,
-	["number"] = function(raw: any) -- double
+	["number"] = function(raw: number) -- double
 		local b = buffer.create(8)
 
 		buffer.writef64(b, 0, raw)
@@ -950,7 +950,7 @@ Attribute_Encoders = {
 
 		return b, len
 	end,
-	["UDim"] = function(raw: any)
+	["UDim"] = function(raw: UDim)
 		local b = buffer.create(8)
 
 		buffer.writef32(b, 0, raw.Scale)
@@ -958,49 +958,49 @@ Attribute_Encoders = {
 
 		return b, 8
 	end,
-	["UDim2"] = function(raw: any)
+	["UDim2"] = function(raw: UDim2)
 		return Attribute_Encoders._packMultiple(Attribute_Encoders["UDim"], raw.X, raw.Y)
 	end,
-	["Ray"] = function(raw: any)
+	["Ray"] = function(raw: Ray)
 		return Attribute_Encoders._packMultiple(Attribute_Encoders["Vector3"], raw.Origin, raw.Direction)
 	end,
-	["Faces"] = function(raw: any)
+	["Faces"] = function(raw: Faces)
 		local b = buffer.create(4)
 
 		buffer.writeu32(b, 0, countBits(raw.Right, raw.Top, raw.Back, raw.Left, raw.Bottom, raw.Front))
 
 		return b, 4
 	end,
-	["Axes"] = function(raw: any)
+	["Axes"] = function(raw: Axes)
 		local b = buffer.create(4)
 
 		buffer.writeu32(b, 0, countBits(raw.X, raw.Y, raw.Z))
 
 		return b, 4
 	end,
-	["BrickColor"] = function(raw: any)
+	["BrickColor"] = function(raw: BrickColor)
 		local b = buffer.create(4)
 
 		buffer.writeu32(b, 0, raw.Number)
 
 		return b, 4
 	end,
-	["Color3"] = function(raw: any)
+	["Color3"] = function(raw: Color3)
 		return Attribute_Encoders._packF32(raw.R, raw.G, raw.B)
 	end,
-	["Vector2"] = function(raw: any)
+	["Vector2"] = function(raw: Vector2)
 		return Attribute_Encoders._packF32(raw.X, raw.Y)
 	end,
-	["Vector3"] = function(raw: any)
+	["Vector3"] = function(raw: Vector3)
 		return Attribute_Encoders._packF32(raw.X, raw.Y, raw.Z)
 	end,
-	["Vector2int16"] = function(raw: any)
+	["Vector2int16"] = function(raw: Vector2int16)
 		return Attribute_Encoders._packI16(raw.X, raw.Y)
 	end,
-	["Vector3int16"] = function(raw: any)
+	["Vector3int16"] = function(raw: Vector3int16)
 		return Attribute_Encoders._packI16(raw.X, raw.Y, raw.Z)
 	end,
-	["CFrame"] = function(raw: any)
+	["CFrame"] = function(raw: CFrame)
 		local X, Y, Z, R00, R01, R02, R10, R11, R12, R20, R21, R22 = raw:GetComponents()
 
 		local rotation_ID = CFrame_Rotation_Ids[rawBasisString(R00, R01, R02, R10, R11, R12, R20, R21, R22)]
@@ -1027,7 +1027,7 @@ Attribute_Encoders = {
 
 		return b, len
 	end,
-	["EnumItem"] = function(raw: any)
+	["EnumItem"] = function(raw: EnumItem)
 		local nameBuf, nameSize = Attribute_Encoders["string"](tostring(raw.EnumType))
 
 		local len = nameSize + 4
@@ -1068,13 +1068,13 @@ Attribute_Encoders = {
 
 		return b, 20
 	end,
-	["NumberRange"] = function(raw: any)
+	["NumberRange"] = function(raw: NumberRange)
 		return Attribute_Encoders._packF32(raw.Min, raw.Max)
 	end,
-	["Rect"] = function(raw: any)
+	["Rect"] = function(raw: Rect)
 		return Attribute_Encoders._packMultiple(Attribute_Encoders["Vector2"], raw.Min, raw.Max)
 	end,
-	["PhysicalProperties"] = function(raw: any)
+	["PhysicalProperties"] = function(raw: PhysicalProperties)
 		local b = buffer.create(25)
 
 		-- rbxl uses flag 0-3, meanwhile attributes use 1 as it's always set; can keep 3 for compatibility with both
@@ -1090,7 +1090,7 @@ Attribute_Encoders = {
 
 		return b, 25
 	end,
-	["Color3uint8"] = function(raw: any)
+	["Color3uint8"] = function(raw: Color3)
 		local b = buffer.create(3)
 
 		buffer.writeu8(b, 0, math.floor(raw.R * 255))
@@ -1099,7 +1099,7 @@ Attribute_Encoders = {
 
 		return b, 3
 	end,
-	["Region3"] = function(raw: any)
+	["Region3"] = function(raw: Region3)
 		local Translation = raw.CFrame.Position
 		local HalfSize = raw.Size * 0.5
 
@@ -1109,10 +1109,10 @@ Attribute_Encoders = {
 			Translation + HalfSize
 		)
 	end,
-	["Region3int16"] = function(raw: any)
+	["Region3int16"] = function(raw: Region3int16)
 		return Attribute_Encoders._packMultiple(Attribute_Encoders["Vector3int16"], raw.Min, raw.Max)
 	end,
-	["Font"] = function(raw: any)
+	["Font"] = function(raw: Font)
 		local encoder = Attribute_Encoders["string"]
 
 		local familyBuf, familySize = encoder(raw.Family)
@@ -1132,7 +1132,7 @@ Attribute_Encoders = {
 
 		return b, len
 	end,
-	["SecurityCapabilities"] = function(raw: any)
+	["SecurityCapabilities"] = function(raw: SecurityCapabilities)
 		local b = buffer.create(8)
 
 		if raw == BASE_CAPABILITIES then
@@ -1143,7 +1143,7 @@ Attribute_Encoders = {
 
 		return b, 8
 	end,
-	["Path2DControlPoint"] = function(raw: any)
+	["Path2DControlPoint"] = function(raw: Path2DControlPoint)
 		return Attribute_Encoders._packMultiple(
 			Attribute_Encoders["UDim2"],
 			raw.Position,
@@ -1151,7 +1151,7 @@ Attribute_Encoders = {
 			raw.RightTangent
 		)
 	end,
-	["TweenInfo"] = function(raw: any)
+	["TweenInfo"] = function(raw: TweenInfo)
 		local b = buffer.create(21)
 
 		buffer.writef32(b, 0, raw.Time)
@@ -1204,7 +1204,7 @@ setmetatable(Attribute_Encoders, {
 })
 
 local Binary_Encoders: { [string]: any } = {
-	["string"] = function(sbuf: SBuf, vals: { any }, n: number)
+	["string"] = function(sbuf: SBuf, vals: { string }, n: number)
 		local total = 4 * n
 		for i = 1, n do
 			total += #vals[i]
@@ -1220,7 +1220,7 @@ local Binary_Encoders: { [string]: any } = {
 			o += 4 + l
 		end
 	end,
-	["bool"] = function(sbuf: SBuf, vals: { any }, n: number)
+	["bool"] = function(sbuf: SBuf, vals: { boolean }, n: number)
 		local base = sbuf:allocRegion(n)
 		local buf = sbuf.buf
 		local wu8 = buffer.writeu8
@@ -1234,7 +1234,7 @@ local Binary_Encoders: { [string]: any } = {
 	["int"] = planeEncoder(zigzag32),
 	["float"] = planeEncoder(rotf),
 
-	["double"] = function(sbuf: SBuf, vals: { any }, n: number)
+	["double"] = function(sbuf: SBuf, vals: { number }, n: number)
 		local base = sbuf:allocRegion(8 * n)
 		local buf = sbuf.buf
 		local wf64 = buffer.writef64
@@ -1301,7 +1301,7 @@ local Binary_Encoders: { [string]: any } = {
 	end),
 	["Vector2int16"] = i16Encoder("X", "Y"),
 
-	["CFrame"] = function(sbuf: SBuf, vals: { any }, n: number)
+	["CFrame"] = function(sbuf: SBuf, vals: { CFrame }, n: number)
 		writeCFrameBody(sbuf, vals, n, nil)
 	end,
 
@@ -1378,7 +1378,7 @@ local Binary_Encoders: { [string]: any } = {
 		return rotf(v.Max.Y)
 	end),
 
-	["PhysicalProperties"] = function(sbuf: SBuf, vals: { any }, n: number)
+	["PhysicalProperties"] = function(sbuf: SBuf, vals: { PhysicalProperties }, n: number)
 		sbuf:reserve(25 * n)
 		local buf = sbuf.buf
 		local o = sbuf.len
@@ -1402,7 +1402,7 @@ local Binary_Encoders: { [string]: any } = {
 		sbuf.len = o
 	end,
 
-	["Color3uint8"] = function(sbuf: SBuf, vals: { any }, n: number)
+	["Color3uint8"] = function(sbuf: SBuf, vals: { Color3 }, n: number)
 		local base = sbuf:allocRegion(3 * n)
 		local buf = sbuf.buf
 		local wu8 = buffer.writeu8
@@ -1416,7 +1416,7 @@ local Binary_Encoders: { [string]: any } = {
 		end
 	end,
 
-	["int64"] = function(sbuf: SBuf, vals: { any }, n: number)
+	["int64"] = function(sbuf: SBuf, vals: { number }, n: number)
 		local base = sbuf:allocRegion(8 * n)
 		for i = 1, n do
 			pokeU64Planes(sbuf, base + (i - 1), n, zigzag64(vals[i]))
@@ -1468,7 +1468,7 @@ local Binary_Encoders: { [string]: any } = {
 			pokeU32Planes(sbuf, o + 12 * n, n, randLo)
 		end
 	end,
-	["Font"] = function(sbuf: SBuf, vals: { any }, n: number)
+	["Font"] = function(sbuf: SBuf, vals: { Font }, n: number)
 		local wlstr, wu16, wu8, wu32 = sbuf.writeLenString, sbuf.writeu16, sbuf.writeu8, sbuf.writeu32
 		for i = 1, n do
 			local val = vals[i]
@@ -1482,7 +1482,7 @@ local Binary_Encoders: { [string]: any } = {
 			wu32(sbuf, 0) -- CachedFaceId can't be indexed
 		end
 	end,
-	["SecurityCapabilities"] = function(sbuf: SBuf, vals: { any }, n: number)
+	["SecurityCapabilities"] = function(sbuf: SBuf, vals: { SecurityCapabilities }, n: number)
 		local base = sbuf:allocRegion(8 * n)
 		for i = 1, n do
 			local lo, hi = capabilityHalves(vals[i])
@@ -1594,18 +1594,18 @@ XML_Encoders = {
 	--------------------------------------------------------------
 	--------------------------------------------------------------
 	--------------------------------------------------------------
-	Axes = function(raw: any)
+	Axes = function(raw: Axes)
 		return "<axes>" .. countBits(raw.X, raw.Y, raw.Z) .. "</axes>"
 	end,
 
-	BinaryString = function(raw: any) -- ! only add raw == nil if such edge-case exists (note it)
+	BinaryString = function(raw: string) -- ! only add raw == nil if such edge-case exists (note it)
 		return raw == "" and "" or base64encode(raw)
 	end,
 
-	BrickColor = function(raw: any)
+	BrickColor = function(raw: BrickColor)
 		return raw.Number -- * Roblox encodes the tags as "int", but this is not required for Roblox to properly decode the type. For better compatibility, it is preferred that third-party implementations encode and decode "BrickColor" tags instead. Could also use "int" or "Color3uint8"
 	end,
-	CFrame = function(raw: any)
+	CFrame = function(raw: CFrame)
 		local X, Y, Z, R00, R01, R02, R10, R11, R12, R20, R21, R22 = raw:GetComponents()
 		return XML_Encoders._vector(X, Y, Z)
 			.. "<R00>"
@@ -1630,10 +1630,10 @@ XML_Encoders = {
 			"CoordinateFrame"
 	end,
 
-	Color3 = function(raw: any)
+	Color3 = function(raw: Color3)
 		return "<R>" .. raw.R .. "</R><G>" .. raw.G .. "</G><B>" .. raw.B .. "</B>"
 	end,
-	Color3uint8 = function(raw: any)
+	Color3uint8 = function(raw: Color3)
 		return 0xFF000000
 			+ (math.floor(raw.R * 255) * 0x10000)
 			+ (math.floor(raw.G * 255) * 0x100)
@@ -1654,26 +1654,26 @@ XML_Encoders = {
 			.. _normalizeRange(color3.B)
 			.. " 0 "
 	end,
-	Content = function(raw: any) -- Object/Opaque have no Luau constructor; binary writes them as None, so match that here
+	Content = function(raw: Content) -- Object/Opaque have no Luau constructor; binary writes them as None, so match that here
 		-- * Currently the only way to tell which properties serialize (CanSave & CanLoad don't help here) is either API-2 dump or ReflectionService
 		return raw.SourceType == Enum.ContentSourceType.Uri and "<uri>" .. XML_Encoders.string(raw.Uri) .. "</uri>"
 			or "<null></null>"
 	end,
-	ContentId = function(raw: any) -- ! only add raw == nil if such edge-case exists (note it)
+	ContentId = function(raw: string) -- ! only add raw == nil if such edge-case exists (note it)
 		return raw == "" and "<null></null>" or "<url>" .. XML_Encoders.string(raw) .. "</url>", "Content"
 	end,
-	CoordinateFrame = function(raw: any)
+	CoordinateFrame = function(raw: CFrame)
 		return "<CFrame>" .. XML_Encoders.CFrame(raw) .. "</CFrame>"
 	end,
 	-- DateTime = function(raw: any) return raw.UnixTimestampMillis end, -- ? Doesn't have serializer
-	EnumItem = function(raw: any)
+	EnumItem = function(raw: EnumItem)
 		return raw.Value, "token"
 	end,
-	Faces = function(raw: any)
+	Faces = function(raw: Faces)
 		-- The text of this element is formatted as an integer between 0 and 63
 		return "<faces>" .. countBits(raw.Right, raw.Top, raw.Back, raw.Left, raw.Bottom, raw.Front) .. "</faces>"
 	end,
-	Font = function(raw: any)
+	Font = function(raw: Font)
 		-- TODO (OPTIONAL ELEMENT): Figure out how to determine (ContentId) <CachedFaceId><url>rbxasset://fonts/GothamSSm-Medium.otf</url></CachedFaceId>
 		--[[
 		? game:GetService("TextService"):GetFontMemoryData()
@@ -1692,7 +1692,7 @@ XML_Encoders = {
 			.. "</Style>"
 	end,
 	NetAssetRef = nil,
-	NumberRange = function(raw: any) -- tostring(raw) also works
+	NumberRange = function(raw: NumberRange) -- tostring(raw) also works
 		local _normalizeRange = XML_Encoders._normalizeRange
 
 		return _normalizeRange(raw.Min) .. " " .. _normalizeRange(raw.Max) --[[.. " "]] -- ! This might be required for compatibility; _normalizeRange  is not needed here but it fixes the issue where "nan 10" value would reset to "0 0"
@@ -1709,38 +1709,38 @@ XML_Encoders = {
 			.. " "
 	end,
 
-	PhysicalProperties = function(raw: any)
+	PhysicalProperties = function(raw: PhysicalProperties)
 		local CustomPhysics = "<CustomPhysics>" .. XML_Encoders.bool(raw and true or false) .. "</CustomPhysics>"
 
 		return raw
 				and CustomPhysics .. "<Density>" .. raw.Density .. "</Density><Friction>" .. raw.Friction .. "</Friction><Elasticity>" .. raw.Elasticity .. "</Elasticity><FrictionWeight>" .. raw.FrictionWeight .. "</FrictionWeight><ElasticityWeight>" .. raw.ElasticityWeight .. "</ElasticityWeight><AcousticAbsorption>" .. raw.AcousticAbsorption .. "</AcousticAbsorption>"
 			or CustomPhysics
 	end,
-	ProtectedString = function(raw: any)
+	ProtectedString = function(raw: string)
 		return string_find(raw, "]]>") and string.gsub(raw, ESCAPES_PATTERN, ESCAPES) or XML_Encoders._cdata(raw)
 	end,
-	Ray = function(raw: any)
+	Ray = function(raw: Ray)
 		local vector3 = XML_Encoders.Vector3
 
 		return "<origin>" .. vector3(raw.Origin) .. "</origin><direction>" .. vector3(raw.Direction) .. "</direction>"
 	end,
-	Rect = function(raw: any)
+	Rect = function(raw: Rect)
 		return XML_Encoders._minMax(raw.Min, raw.Max, XML_Encoders.Vector2), "Rect2D"
 	end,
-	Region3 = function(raw: any) -- ? Doesn't have serializer, the math is correct though
+	Region3 = function(raw: Region3) -- ? Doesn't have serializer, the math is correct though
 		local Translation = raw.CFrame.Position
 		local HalfSize = raw.Size * 0.5
 
 		return XML_Encoders._minMax(Translation - HalfSize, Translation + HalfSize, XML_Encoders.Vector3)
 	end,
-	Region3int16 = function(raw: any)
+	Region3int16 = function(raw: Region3int16)
 		return XML_Encoders._minMax(raw.Min, raw.Max, XML_Encoders.Vector3int16)
 	end,
 
 	SharedString = function(raw: any)
 		return sharedStrings[XML_Encoders.BinaryString(raw)]
 	end,
-	SecurityCapabilities = function(raw: any)
+	SecurityCapabilities = function(raw: SecurityCapabilities)
 		if raw == BASE_CAPABILITIES then
 			return 0
 		end
@@ -1748,7 +1748,7 @@ XML_Encoders = {
 		return capabilityNumber(raw)
 	end,
 
-	TweenInfo = function(raw: any)
+	TweenInfo = function(raw: TweenInfo)
 		local _normalizeNumber = XML_Encoders._normalizeNumber
 		return "Time:"
 			.. _normalizeNumber(raw.Time)
@@ -1763,10 +1763,10 @@ XML_Encoders = {
 			.. " EasingStyle:"
 			.. raw.EasingStyle.Name
 	end,
-	UDim = function(raw: any)
+	UDim = function(raw: UDim)
 		return "<S>" .. raw.Scale .. "</S><O>" .. raw.Offset .. "</O>"
 	end,
-	UDim2 = function(raw: any)
+	UDim2 = function(raw: UDim2)
 		local X, Y = raw.X, raw.Y
 
 		return "<XS>"
@@ -1791,22 +1791,22 @@ XML_Encoders = {
 		return string.gsub(raw, "-", "") -- seems to be string type by default
 	end,
 
-	Vector2 = function(raw: any)
+	Vector2 = function(raw: Vector2)
 		return XML_Encoders._vector(raw.X, raw.Y)
 	end,
 	Vector2int16 = nil,
-	Vector3 = function(raw: any)
+	Vector3 = function(raw: Vector3)
 		return XML_Encoders._vector(raw.X, raw.Y, raw.Z)
 	end,
 	Vector3int16 = nil,
-	bool = function(raw: any)
+	bool = function(raw: boolean)
 		return raw and "true" or "false"
 	end,
 	double = nil, -- Float64
 	float = nil, -- Float32
 	int = nil, -- Int32
 	int64 = nil, -- Int64 (long)
-	string = function(raw: any)
+	string = function(raw: string)
 		return (raw == nil or raw == "") and ""
 			or string_find(raw, "]]>") and string.gsub(raw, ESCAPES_PATTERN, ESCAPES)
 			or XML_Encoders._cdata(string.gsub(raw, "\0", ""))
@@ -2211,7 +2211,7 @@ do
 		]]
 	local NotScriptableFixes = {
 		Instance = {
-			AttributesSerialize = function(instance: any)
+			AttributesSerialize = function(instance: Instance)
 				local attrs = instance:GetAttributes()
 
 				if not next(attrs) then
@@ -2221,7 +2221,7 @@ do
 				return AttributesSerialize(attrs)
 			end,
 			DefinesCapabilities = "Sandboxed",
-			Tags = function(instance: any)
+			Tags = function(instance: Instance)
 				local tags = service.CollectionService:GetTags(instance) -- ? Seems faster than instance:GetTags
 
 				if #tags == 0 then
@@ -2912,22 +2912,22 @@ do
 			end,
 		},
 		BaseWrap = {
-			TemporaryCageMeshContent = function(instance: any)
+			TemporaryCageMeshContent = function(instance: Instance)
 				return Content.fromUri(gethiddenproperty_fallback(instance, "TemporaryCageMeshId"))
 			end,
 		},
 		MaterialVariant = {
-			TexturePackContent = function(instance: any)
+			TexturePackContent = function(instance: Instance)
 				return Content.fromUri(gethiddenproperty_fallback(instance, "TexturePack"))
 			end,
 		},
 		TerrainDetail = {
-			TexturePackContent = function(instance: any)
+			TexturePackContent = function(instance: Instance)
 				return Content.fromUri(gethiddenproperty_fallback(instance, "TexturePack"))
 			end,
 		},
 		WrapLayer = {
-			TemporaryReferenceMeshContent = function(instance: any)
+			TemporaryReferenceMeshContent = function(instance: Instance)
 				return Content.fromUri(gethiddenproperty_fallback(instance, "TemporaryReferenceId"))
 			end,
 		},
@@ -2956,7 +2956,7 @@ do
 			-- end,
 		},
 		PartOperation = {
-			Content = function(instance: any)
+			Content = function(instance: Instance)
 				return Content.fromUri(gethiddenproperty_fallback(instance, "AssetId"))
 			end,
 			InitialSize = "MeshSize",
@@ -2968,10 +2968,10 @@ do
 		},
 		Fire = { heat_xml = "Heat", size_xml = "Size" },
 		Clothing = {
-			Outfit1Content = function(instance: any)
+			Outfit1Content = function(instance: Instance)
 				return Content.fromUri(gethiddenproperty_fallback(instance, "Outfit1"))
 			end,
-			Outfit2Content = function(instance: any)
+			Outfit2Content = function(instance: Instance)
 				return Content.fromUri(gethiddenproperty_fallback(instance, "Outfit2"))
 			end,
 		},
@@ -3140,7 +3140,7 @@ do
 		},
 		Workspace = {
 			-- SignalBehavior2 = "SignalBehavior", -- * Both NotScriptable
-			CollisionGroups = function(instance: any) -- deprecated
+			CollisionGroups = function(instance: Instance) -- deprecated
 				local collision_groups = (game:GetService("PhysicsService") :: any):GetRegisteredCollisionGroups()
 				-- local collision_groups = instance:GetRegisteredCollisionGroups() -- ! Wait until MultiworldCollisionGroups2
 
@@ -3157,7 +3157,7 @@ do
 			end,
 		},
 		WorldRoot = {
-			CollisionGroupData = function(instance: any)
+			CollisionGroupData = function(instance: Instance)
 				local collision_groups = (game:GetService("PhysicsService") :: any):GetRegisteredCollisionGroups()
 				-- local collision_groups = instance:GetRegisteredCollisionGroups() -- ! Wait until MultiworldCollisionGroups2
 				local n = #collision_groups
@@ -3781,52 +3781,52 @@ export type SaveInstanceOptions = {
 	ShutdownWhenDone: (boolean)?,
 	__DEBUG_MODE: (boolean | ((...any) -> ()))?,
 	-- Aliases
-	AnonymousMode: any?,
-	Blacklist: any?,
-	ClassIgnoreList: any?,
-	Clipboard: any?,
-	Compress: any?,
-	Compression: any?,
-	Debug: any?,
-	DecompileScripts: any?,
-	DecompilerTimeout: any?,
-	EmbedBytecode: any?,
-	FileName: any?,
-	IgnoreArchivable: any?,
-	IgnoreClasses: any?,
-	IgnoreDefaultProps: any?,
-	IgnoreInstances: any?,
-	IgnoreProperty: any?,
-	IgnoreRobloxPlayerScripts: any?,
-	InstanceIgnoreList: any?,
-	InstancesBlacklist: any?,
-	IsolatePlayerGui: any?,
-	LocalPlayer: any?,
-	Model: any?,
-	NoXML: any?,
-	Path: any?,
-	Players: any?,
-	Progress: any?,
-	Root: any?,
-	SaveAsBinary: any?,
-	SaveCharacters: any?,
-	SaveLocalPlayer: any?,
-	SaveModel: any?,
-	SaveNil: any?,
-	SaveNilInstances: any?,
-	SaveNonCreatable: any?,
-	SavePlayerGui: any?,
-	SavePlayers: any?,
-	SavePlayersData: any?,
-	SaveScripts: any?,
-	SaveStarterPlayer: any?,
-	ScriptDecompile: any?,
-	ShowProgress: any?,
-	Status: any?,
-	StatusText: any?,
-	UseDecompiler: any?,
-	Verbose: any?,
-	timeout: any?,
+	AnonymousMode: (boolean | {Name: string?, UserId: number?})?,
+	Blacklist: ({Instance | string} | {[Instance | string]: boolean | {[string]: boolean}})?,
+	ClassIgnoreList: ({Instance | string} | {[Instance | string]: boolean | {[string]: boolean}})?,
+	Clipboard: (boolean)?,
+	Compress: (string | boolean)?,
+	Compression: (string | boolean)?,
+	Debug: (boolean | ((...any) -> ()))?,
+	DecompileScripts: (boolean)?,
+	DecompilerTimeout: (number)?,
+	EmbedBytecode: (boolean)?,
+	FileName: (string | false)?,
+	IgnoreArchivable: (boolean)?,
+	IgnoreClasses: ({Instance | string} | {[Instance | string]: boolean | {[string]: boolean}})?,
+	IgnoreDefaultProps: (boolean)?,
+	IgnoreInstances: ({Instance | string} | {[Instance | string]: boolean | {[string]: boolean}})?,
+	IgnoreProperty: ({string})?,
+	IgnoreRobloxPlayerScripts: (boolean)?,
+	InstanceIgnoreList: ({Instance | string} | {[Instance | string]: boolean | {[string]: boolean}})?,
+	InstancesBlacklist: ({Instance | string} | {[Instance | string]: boolean | {[string]: boolean}})?,
+	IsolatePlayerGui: (boolean)?,
+	LocalPlayer: (boolean)?,
+	Model: (Instance | false)?,
+	NoXML: (boolean)?,
+	Path: (string | false)?,
+	Players: (boolean)?,
+	Progress: (boolean)?,
+	Root: (Instance | false)?,
+	SaveAsBinary: (boolean)?,
+	SaveCharacters: (boolean)?,
+	SaveLocalPlayer: (boolean)?,
+	SaveModel: (Instance | false)?,
+	SaveNil: (boolean)?,
+	SaveNilInstances: (boolean)?,
+	SaveNonCreatable: (boolean)?,
+	SavePlayerGui: (boolean)?,
+	SavePlayers: (boolean)?,
+	SavePlayersData: (boolean)?,
+	SaveScripts: (boolean)?,
+	SaveStarterPlayer: (boolean)?,
+	ScriptDecompile: (boolean)?,
+	ShowProgress: (boolean)?,
+	Status: (boolean)?,
+	StatusText: (boolean)?,
+	UseDecompiler: (boolean)?,
+	Verbose: (boolean | ((...any) -> ()))?,
+	timeout: (number)?,
 }
 
 --- @interface SaveInstanceOptions
@@ -5765,7 +5765,7 @@ local function synsaveinstance(...: any): any
 
 		local deferred = {}
 
-		local function recur(instance: any, parent: any, ldIgnore: any, depth: number, anchor: any)
+		local function recur(instance: Instance, parent: any, ldIgnore: any, depth: number, anchor: any)
 			if entries[instance] then
 				return -- already collected via another root
 			end
@@ -6281,7 +6281,7 @@ local function synsaveinstance(...: any): any
 			return value, tag or valueType
 		end
 
-		local function ReturnItem(className: any, instance: any)
+		local function ReturnItem(className: any, instance: Instance)
 			return '<Item class="' .. className .. '" referent="' .. refs[instance] .. '">'
 		end
 
