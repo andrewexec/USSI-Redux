@@ -31,6 +31,7 @@
             level: 2,
           },
           { value: "Staying safe", id: "staying-safe", level: 2 },
+          { value: "Known limits", id: "known-limits", level: 2 },
           {
             value: "Using the options type",
             id: "using-the-options-type",
@@ -607,7 +608,11 @@
                   children: [
                     "The next run skips it. Its ",
                     (0, i.jsx)(s.code, { children: "Source" }),
-                    " says it crashed the executor on a previous run, and the rest of the save carries on.",
+                    " starts with ",
+                    (0, i.jsx)(s.code, { children: "-- Skipped:" }),
+                    " and says how to retry with ",
+                    (0, i.jsx)(s.code, { children: "RetryCrashedScripts" }),
+                    ", and the rest of the save carries on.",
                   ],
                 }),
                 "\n",
@@ -823,6 +828,21 @@
                 (0, i.jsx)(s.code, { children: "saveinstance" }),
                 " does not modify game state.",
               ],
+            }),
+            "\n",
+            (0, i.jsx)(s.h2, { id: "known-limits", children: "Known limits" }),
+            "\n",
+            (0, i.jsxs)(s.p, {
+              children: [
+                "Some executors can't read every kind of hidden property. USSI Redux tests each type once, remembers the result in ",
+                (0, i.jsx)(s.code, { children: "EXEC_STATE.json" }),
+                ", and lists the types it had to skip at the top of the save.",
+              ],
+            }),
+            "\n",
+            (0, i.jsx)(s.p, {
+              children:
+                "Other executors may fail on different types. The list in the save header shows what yours skipped.",
             }),
             "\n",
             (0, i.jsx)(s.h2, {

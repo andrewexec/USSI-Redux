@@ -180,10 +180,16 @@ text.Parent = model
 model.Parent = game:GetService("ReplicatedStorage")
 
 local function save(options)
-	options.Object = options.Object or model
+	if options.Object == false then
+		options.Object = nil -- a whole-place save, where mode decides what is saved
+	else
+		options.Object = options.Object or model
+	end
 	options.ShowStatus = false
 	options.SafeMode = false
-	options.ReadMe = false
+	if options.ReadMe == nil then
+		options.ReadMe = false
+	end
 	options.AvoidFileOverwrite = false
 	options.DecompileTimeout = CONFIG.DecompileTimeout
 	return pcall(synsaveinstance, options)
@@ -191,11 +197,10 @@ end
 
 local function saveTo(name, options)
 	options.FilePath = CONFIG.OutFolder .. name
+	local place = options.Object == false -- read before save() clears it
 	local ok, err = save(options)
-	local ext = options.Binary == false and ".rbxmx" or ".rbxm"
-	if options.XML then
-		ext = ".rbxmx"
-	end
+	local isXml = options.XML == true or options.Binary == false
+	local ext = isXml and (place and ".rbxlx" or ".rbxmx") or (place and ".rbxl" or ".rbxm")
 	local path = CONFIG.OutFolder .. name .. ext
 	return ok, err, path
 end
@@ -446,6 +451,133 @@ test("SaveSpecialProperties keeps only the properties you list", function()
 	end
 	return keptWanted and none ~= all,
 		`empty list dropped {#dropped} ({table.concat(dropped, ", ", 1, math.min(#dropped, 6))}); listing "{wanted}" kept it: {tostring(keptWanted)}; other dropped ones still gone: {droppedOthers}/{#dropped - 1}`
+end)
+
+test("Callback receives the saved data instead of a file", function()
+	local received, chunkCount
+	local ok, err, path = saveTo("callback", {
+		XML = true,
+		Callback = function(data, chunks)
+			received = data
+			chunkCount = chunks and #chunks
+		end,
+	})
+	if not ok then
+		return false, tostring(err)
+	end
+	local wroteFile = exists(path)
+	remove(path)
+	local good = type(received) == "string" and string.sub(received, 1, 7) == "<roblox" and not wroteFile
+	return good, `{received and #received or 0} bytes, {tostring(chunkCount)} chunks, file written: {tostring(wroteFile)}`
+end)
+
+test("CopyToClipboard does not write a file", function()
+	if not env.setrbxclipboard then
+		return nil, "the executor has no setrbxclipboard"
+	end
+	local ok, err, path = saveTo("clipboard", { XML = true, CopyToClipboard = true })
+	if not ok then
+		return false, tostring(err)
+	end
+	local wroteFile = exists(path)
+	remove(path)
+	return not wroteFile, `file written: {tostring(wroteFile)}`
+end)
+
+test("ReadMe adds a README to the save", function()
+	local ok, err, path = saveTo("readme", { XML = true, ReadMe = true })
+	if not ok then
+		return false, tostring(err)
+	end
+	local data = read(path)
+	remove(path)
+	return data ~= nil and string.find(data, "README", 1, true) ~= nil, data and `{#data} bytes` or "no file"
+end)
+
+test("DecompileThreads above 1 still decompiles", function()
+	if not target or not env.getscriptbytecode then
+		return nil, "no script with bytecode to test with"
+	end
+	local ok, err, path = saveTo("threads", {
+		XML = true,
+		Object = target,
+		DecompileThreads = 2,
+		scriptcache = true,
+		Decompile = true,
+	})
+	if not ok then
+		return false, tostring(err)
+	end
+	local data = read(path)
+	remove(path)
+	local from = data and string.find(data, 'name="Source"', 1, true)
+	if not from then
+		return false, "no Source property in the output"
+	end
+	local snippet = string.gsub(string.sub(data, from, from + 120), "[\r\n]+", " | ")
+	return not wasSkipped(data), snippet
+end)
+
+test('mode = "scripts" keeps scripts and drops the rest', function()
+	local holder = Instance.new("Folder")
+	holder.Name = "USSI_TEST_SCRIPT_HOLDER"
+	local script = Instance.new("LocalScript")
+	script.Name = "USSI_TEST_SCRIPT"
+	script.Disabled = true
+	script.Parent = holder
+	local lonely = Instance.new("Part")
+	lonely.Name = "USSI_TEST_PART_NOSCRIPT"
+	lonely.Anchored = true
+	lonely.Parent = workspace
+	holder.Parent = workspace
+
+	local ok, err, path = saveTo("scripts_mode", { XML = true, Object = false, mode = "scripts", Decompile = false })
+	local data = ok and read(path)
+	remove(path)
+	holder:Destroy()
+	lonely:Destroy()
+	if not ok then
+		return false, tostring(err)
+	end
+	if not data then
+		return false, `{path} was not created`
+	end
+	local hasScript = string.find(data, "USSI_TEST_SCRIPT", 1, true) ~= nil
+	local hasLonelyPart = string.find(data, "USSI_TEST_PART_NOSCRIPT", 1, true) ~= nil
+	return hasScript and not hasLonelyPart,
+		`{#data} bytes, test script saved: {tostring(hasScript)}, part with no script saved: {tostring(hasLonelyPart)}`
+end)
+
+test("Model pivot is saved even if gethiddenproperty can't read it", function()
+	-- Potassium cannot read OptionalCoordinateFrame, so WorldPivotData must come from the WorldPivot fallback
+	local pivotModel = Instance.new("Model")
+	pivotModel.Name = "USSI_TEST_PIVOT"
+	local anchor = Instance.new("Part")
+	anchor.Anchored = true
+	anchor.Parent = pivotModel
+	pivotModel.WorldPivot = CFrame.new(11, 22, 33)
+	pivotModel.Parent = game:GetService("ReplicatedStorage")
+
+	local ok, err, path = saveTo("pivot", { XML = true, Object = pivotModel })
+	local data = ok and read(path)
+	remove(path)
+	pivotModel:Destroy()
+	if not ok then
+		return false, tostring(err)
+	end
+	if not data then
+		return false, `{path} was not created`
+	end
+	local from = string.find(data, "WorldPivotData", 1, true)
+	if not from then
+		return false, "the output has no WorldPivotData"
+	end
+	local window = string.sub(data, from, from + 400)
+	local hasValues = string.find(window, "<X>11</X>", 1, true) ~= nil
+		and string.find(window, "<Y>22</Y>", 1, true) ~= nil
+		and string.find(window, "<Z>33</Z>", 1, true) ~= nil
+	return hasValues, hasValues and "WorldPivotData holds 11, 22, 33"
+		or ("WorldPivotData is there but not the pivot we set: " .. string.gsub(string.sub(window, 1, 160), "[\r\n]+", " "))
 end)
 
 test("no DUPLICATE option or alias warnings", function()
