@@ -3759,6 +3759,7 @@ export type SaveInstanceOptions = {
 	IgnoreList: ({Instance | string} | {[Instance | string]: boolean | {[string]: boolean}})?,
 	MaxDepth: (number)?,
 	IgnoreSpecialProperties: (boolean)?,
+	SaveSpecialProperties: ({ string } | false)?,
 	AlternativeWritefile: (boolean)?,
 	Anonymous: (boolean | {Name: string?, UserId: number?})?,
 	RiskyServicesDisabled: ({UGC: boolean?, Encoding: boolean?, Reflection: boolean?})?,
@@ -3871,6 +3872,7 @@ export type SaveInstanceOptions = {
 --- @field IgnoreList {Instance | string} | {[Instance | string]: boolean | {[string]: boolean}} -- Objects to skip. Use an [Instance] or a class name as a key to skip that object and its children. `ClassName = false` keeps the object but skips its children. `ClassName = {Name1, Name2}` skips objects with those names. You can also pass a list of Instances or class names. ___Default:___ {CoreGui, CorePackages, Packages = false}
 --- @field MaxDepth number -- Objects nested deeper than this are moved up under their ancestor at depth `MaxDepth`, so nothing is dropped, only the nesting is lost. This stops very deep hierarchies from overflowing the stack when Roblox Studio opens the file (binary saves opened at 1740 levels deep; XML saves crashed at 1750). Use `math.huge` to disable. ___Default:___ 1000
 --- @field IgnoreSpecialProperties boolean -- Do not use the executor function `gethiddenproperty`. Other property reads still work. This can help if your executor crashes or the file is corrupted. ___Default:___ false
+--- @field SaveSpecialProperties {string} | false -- Choose which special properties to save. Special properties are hidden or not scriptable, so they need the executor function `gethiddenproperty`. Pass a list of property names, for example `{"Color3uint8", "SmoothGrid"}`, and only those are read with `gethiddenproperty`. Other special properties are skipped, which avoids crashes from properties you do not need. An empty list skips them all. `false` saves them all. This is ignored if `IgnoreSpecialProperties` is on. ___Default:___ false
 --- @field AlternativeWritefile boolean -- Write the file in smaller pieces with `appendfile` instead of one `writefile` call. For binary saves, if `appendfile` fails, it uses `writefile`; if both fail, it switches to XML. ___Default:___ true
 --- @field Anonymous boolean | {Name: string?, UserId: number?} -- **RISKY:** Replace LocalPlayer.Name and UserId in the output. `true` replaces them with `"Roblox"` and `1`. You can also pass a table with `Name` and/or `UserId`. Name matching ignores case. This can also change other text or numbers that match. ___Default:___ false
 --- @field RiskyServicesDisabled {UGC: boolean?, Encoding: boolean?, Reflection: boolean?} -- Turn off services that some games may detect. `UGC` skips [UGCValidationService] (used for some hidden properties). `Encoding` skips [EncodingService]. `Reflection` skips [ReflectionService] (used for class data). Set a flag to `true` to skip that service. If you do not set `RiskyServicesDisabled` yourself, the UGC fallback turns on automatically when `gethiddenproperty` is missing. ___Default:___ {UGC = true, Encoding = false, Reflection = false}
@@ -4070,6 +4072,7 @@ local function synsaveinstance(...: any): any
 		IgnoreNotArchivable = true,
 		IgnorePropertiesOfNotScriptsOnScriptsMode = false,
 		IgnoreSpecialProperties = false,
+		SaveSpecialProperties = false,
 
 		IsolateLocalPlayer = false, --  #service.StarterGui:GetChildren() == 0
 		IsolateLocalPlayerCharacter = false,
@@ -5550,6 +5553,22 @@ local function synsaveinstance(...: any): any
 		saveExecState()
 	end
 
+	local specialPropertyAllowed: { [string]: boolean }? = nil
+	do
+		local list: any = OPTIONS.SaveSpecialProperties
+		if type(list) == "table" then
+			local allowed: { [string]: boolean } = {}
+			for key, value in list do
+				if type(key) == "number" and type(value) == "string" then
+					allowed[value] = true
+				elseif type(key) == "string" and value then
+					allowed[key] = true
+				end
+			end
+			specialPropertyAllowed = allowed
+		end
+	end
+
 	local function readProperty(instance: Instance, property: any)
 		local PropertyName, ValueType, CanRead, Special =
 			property.Name, property.ValueType, property.CanRead, property.Special
@@ -5590,7 +5609,11 @@ local function synsaveinstance(...: any): any
 			if Special then
 				if property.Shadows and GHPShadowed then
 					property.CanRead = false
-				elseif gethiddenproperty and ghpDatatypeAllowed(GHPKey) then
+				elseif
+					gethiddenproperty
+					and (specialPropertyAllowed == nil or specialPropertyAllowed[PropertyName])
+					and ghpDatatypeAllowed(GHPKey)
+				then
 					local ok, result = pcall(gethiddenproperty, instance, PropertyName)
 					if ok then
 						raw = result
@@ -5617,7 +5640,12 @@ local function synsaveinstance(...: any): any
 				local ok, result = pcall(index, instance, PropertyName)
 				if ok then
 					raw = result
-				elseif not (property.Shadows and GHPShadowed) and gethiddenproperty and ghpDatatypeAllowed(GHPKey) then
+				elseif
+					not (property.Shadows and GHPShadowed)
+					and gethiddenproperty
+					and (specialPropertyAllowed == nil or specialPropertyAllowed[PropertyName])
+					and ghpDatatypeAllowed(GHPKey)
+				then
 					ok, result = pcall(gethiddenproperty, instance, PropertyName)
 					ghpDatatypeReport(GHPKey, ok and not filterPropVal(result, property, Category, Optional))
 					if ok then

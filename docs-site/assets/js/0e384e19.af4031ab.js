@@ -794,6 +794,25 @@
                         }),
                       ],
                     }),
+                    (0, i.jsxs)(s.tr, {
+                      children: [
+                        (0, i.jsx)(s.td, {
+                          children: (0, i.jsx)(s.code, {
+                            children: "SaveSpecialProperties",
+                          }),
+                        }),
+                        (0, i.jsx)(s.td, {
+                          children: (0, i.jsx)(s.code, { children: "false" }),
+                        }),
+                        (0, i.jsxs)(s.td, {
+                          children: [
+                            "Save only the special properties you list, for example ",
+                            (0, i.jsx)(s.code, { children: '{"Color3uint8"}' }),
+                            ". An empty list skips them all.",
+                          ],
+                        }),
+                      ],
+                    }),
                   ],
                 }),
               ],

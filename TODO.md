@@ -41,4 +41,4 @@
 - [x] Add Lua & Luau versions instead of merged (WARNING: LUAU MIGHT BE MORE UPDATED THAN LUA VERSION, lua version exists just for the sake of old & bad tools, ask devs of your tools to support luau as its latest & greatest)
 - [x] ~~Add Support for multiple Instances to be saved as a model~~ IsModel = true & ExtraInstances
 - [x] ~~Force disable ParticleEmitters in case something like IgnorePropertiesOfNotScriptsOnScriptsMode is enabled (they stack in one place and create huge lag)~~ Not needed anymore it seems as empty FlipbookLayout breaks them which also results in no particles
-- [ ] Be able to specify which special properties you want saved (to avoid saving all)
+- [x] Be able to specify which special properties you want saved (to avoid saving all) (`SaveSpecialProperties`)

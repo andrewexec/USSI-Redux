@@ -1,4 +1,4 @@
-/*! For license information please see main.5aae408a.js.LICENSE.txt */
+/*! For license information please see main.634281b2.js.LICENSE.txt */
 (self.webpackChunkdocs = self.webpackChunkdocs || []).push([
   [792],
   {
@@ -779,7 +779,7 @@
       var r = n(6540),
         a = n(4784);
       const o = JSON.parse(
-          '{"docusaurus-plugin-content-docs":{"default":{"path":"/USSI-Redux/docs","versions":[{"name":"current","label":"Next","isLast":true,"path":"/USSI-Redux/docs","mainDocId":"intro","docs":[{"id":"api","path":"/USSI-Redux/docs/api","sidebar":"defaultSidebar"},{"id":"intro","path":"/USSI-Redux/docs/intro","sidebar":"defaultSidebar"}],"draftIds":[],"sidebars":{"defaultSidebar":{"link":{"path":"/USSI-Redux/docs/intro","label":"intro"}}}}],"breadcrumbs":true}},"docusaurus-lunr-search":{"default":{"fileNames":{"searchDoc":"search-doc-1795562676386.json","lunrIndex":"lunr-index-1795562676386.json"}}}}',
+          '{"docusaurus-plugin-content-docs":{"default":{"path":"/USSI-Redux/docs","versions":[{"name":"current","label":"Next","isLast":true,"path":"/USSI-Redux/docs","mainDocId":"intro","docs":[{"id":"api","path":"/USSI-Redux/docs/api","sidebar":"defaultSidebar"},{"id":"intro","path":"/USSI-Redux/docs/intro","sidebar":"defaultSidebar"}],"draftIds":[],"sidebars":{"defaultSidebar":{"link":{"path":"/USSI-Redux/docs/intro","label":"intro"}}}}],"breadcrumbs":true}},"docusaurus-lunr-search":{"default":{"fileNames":{"searchDoc":"search-doc-1795565805314.json","lunrIndex":"lunr-index-1795565805314.json"}}}}',
         ),
         i = JSON.parse(
           '{"defaultLocale":"en","locales":["en"],"path":"i18n","currentLocale":"en","localeConfigs":{"en":{"label":"English","direction":"ltr","htmlLang":"en","calendar":"gregory","path":"en","translate":false,"url":"https://andrewexec.github.io","baseUrl":"/USSI-Redux/"}}}',
