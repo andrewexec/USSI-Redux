@@ -50,7 +50,7 @@
       "type": 1,
       "pageTitle": "Getting Started",
       "url": "/USSI-Redux/docs/intro#recovering-from-a-crash",
-      "content": " Some executors crash on particular scripts during decompile. USSI Redux remembers which script was being decompiled, so you can run the save again.  Before each decompile, the script is recorded in EXEC_STATE.json. The record is removed when the decompile finishes.If the executor crashes, the record is still there on the next run. That script is marked as crashed.The next run skips it. Its Source says it crashed the executor on a previous run, and the rest of the save carries on.  Option\tDefault\tMeaningSkipCrashedScripts\ttrue\tTurn this protection on or off. It needs writefile. RetryCrashedScripts\tfalse\tForget the remembered scripts and try them again.  Closing the game in the middle of a decompile looks the same as a crash, so that script is skipped on the next run. If a script was skipped by mistake, run once with RetryCrashedScripts = true.  The same state file remembers which gethiddenproperty types crashed or failed on your executor, so those types are skipped on later runs.  ",
+      "content": " Some executors crash on particular scripts during decompile. USSI Redux remembers which script was being decompiled, so you can run the save again.  Before each decompile, the script is recorded in EXEC_STATE.json. The record is removed when the decompile finishes.If the executor crashes, the record is still there on the next run. That script is marked as crashed.The next run skips it. Its Source starts with -- Skipped: and says how to retry with RetryCrashedScripts, and the rest of the save carries on.  Option\tDefault\tMeaningSkipCrashedScripts\ttrue\tTurn this protection on or off. It needs writefile. RetryCrashedScripts\tfalse\tForget the remembered scripts and try them again.  Closing the game in the middle of a decompile looks the same as a crash, so that script is skipped on the next run. If a script was skipped by mistake, run once with RetryCrashedScripts = true.  The same state file remembers which gethiddenproperty types crashed or failed on your executor, so those types are skipped on later runs.  ",
       "version": "Next",
       "tagName": "h2"
     },
@@ -60,6 +60,15 @@
       "pageTitle": "Getting Started",
       "url": "/USSI-Redux/docs/intro#staying-safe",
       "content": " Option\tDefault\tMeaningSafeMode\tfalse\tDisconnects you from the game when saving starts, and turns on KillAllScripts and BoostFPS unless you set them. Highly recommended. KillAllScripts\tfalse\tKills all scripts to protect you further. SafeMode also turns it on. BoostFPS\tfalse\tTurns off 3D rendering while saving. SafeMode also turns it on. Anonymous\tfalse\tRisky. Removes your name and user ID from the file. IgnoreSpecialProperties\tfalse\tDon't use gethiddenproperty. Helps if your executor crashes or the file is corrupted. SaveSpecialProperties\tfalse\tSave only the special properties you list, for example {&quot;Color3uint8&quot;}. An empty list skips them all.  saveinstance does not modify game state.  ",
+      "version": "Next",
+      "tagName": "h2"
+    },
+    {
+      "title": "Known limits​",
+      "type": 1,
+      "pageTitle": "Getting Started",
+      "url": "/USSI-Redux/docs/intro#known-limits",
+      "content": " Some executors can't read every kind of hidden property. USSI Redux tests each type once, remembers the result in EXEC_STATE.json, and lists the types it had to skip at the top of the save.  Other executors may fail on different types. The list in the save header shows what yours skipped.  ",
       "version": "Next",
       "tagName": "h2"
     },

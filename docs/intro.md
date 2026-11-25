@@ -104,7 +104,7 @@ Some executors crash on particular scripts during decompile. USSI Redux remember
 
 1. Before each decompile, the script is recorded in `EXEC_STATE.json`. The record is removed when the decompile finishes.
 2. If the executor crashes, the record is still there on the next run. That script is marked as crashed.
-3. The next run skips it. Its `Source` says it crashed the executor on a previous run, and the rest of the save carries on.
+3. The next run skips it. Its `Source` starts with `-- Skipped:` and says how to retry with `RetryCrashedScripts`, and the rest of the save carries on.
 
 | Option | Default | Meaning |
 | --- | --- | --- |
@@ -127,6 +127,12 @@ The same state file remembers which `gethiddenproperty` types crashed or failed 
 | `SaveSpecialProperties` | `false` | Save only the special properties you list, for example `{"Color3uint8"}`. An empty list skips them all. |
 
 `saveinstance` does not modify game state.
+
+## Known limits
+
+Some executors can't read every kind of hidden property. USSI Redux tests each type once, remembers the result in `EXEC_STATE.json`, and lists the types it had to skip at the top of the save.
+
+Other executors may fail on different types. The list in the save header shows what yours skipped.
 
 ## Using the options type
 

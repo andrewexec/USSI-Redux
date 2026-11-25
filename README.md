@@ -4,7 +4,7 @@
 # USSI Redux (Universal Syn Save Instance)
 An archive of [github@luau's project](https://web.archive.org/web/20260426045357/https://github.com/luau/UniversalSynSaveInstance) aimed at resurrecting the `saveinstance` function from the long discontinued Synapse X.
 
-## Loadstring - [Documentation](https://github.com/andrewexec/USSI-Redux/blob/main/DOCS.md)
+## Loadstring - [Documentation](https://andrewexec.github.io/USSI-Redux/)
 ```lua
 local Params = {
  RepoURL = "https://raw.githubusercontent.com/andrewexec/USSI-Redux/main/",
@@ -31,8 +31,8 @@ Reason: Many tools fail miserably at providing a good user experience when it co
 
 # Documentation
 
-- [DOCS.md](DOCS.md) lists the options and how to call `saveinstance`.
-- The upstream project's [Documentation] still applies to most options.
+- The [documentation site](https://andrewexec.github.io/USSI-Redux/) has a [Getting Started](https://andrewexec.github.io/USSI-Redux/docs/intro) guide and an [API reference](https://andrewexec.github.io/USSI-Redux/docs/api) that lists every option.
+- [DOCS.md](DOCS.md) links to the same pages.
 
 # Decompiling scripts
 
