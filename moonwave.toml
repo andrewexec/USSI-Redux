@@ -1,16 +1,25 @@
 title = "USSI Redux"
+gitSourceBranch = "main"
 
 [home]
 enabled = true
-bannerImage = "logo.png"
 
 [docusaurus]
-favicon = "favicon.png"
+favicon = "favicon.svg"
 tagline = "A Universal Syn Save Instance revival. This can also be edited and used as a Roblox-Format-File writer."
 
 
 [navbar.logo]
-src = "favicon.png"
+src = "favicon-black.svg"
+srcDark = "favicon.png"
+
+[[footer.links]]
+label = "GitHub"
+href = "https://github.com/andrewexec/USSI-Redux"
+
+[[footer.links]]
+label = "Getting Started"
+to = "/docs/intro"
 
 [footer.logo]
 src = "favicon.png"
