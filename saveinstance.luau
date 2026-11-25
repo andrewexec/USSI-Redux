@@ -117,12 +117,12 @@ end
 local gethiddenproperty_fallback: any
 
 -- These should be universal enough
-local lz4compress: any = lz4compress
+local lz4compress: ((data: string) -> string)? = lz4compress
 local zstdcompress: any = zstdcompress
 local appendfile: any = appendfile
-local delfile: any = delfile
-local isfile: any = isfile
-local readfile: any = readfile
+local delfile: ((path: string) -> ())? = delfile
+local isfile: ((path: string) -> boolean)? = isfile
+local readfile: (path: string) -> string = readfile
 local writefile: any = writefile
 
 local getscriptbytecode = global_container.getscriptbytecode -- * A lot of assumptions are made based on whether this function is defined or not. So in certain edge cases, like if the environment defines "decompile" or "getscripthash" function yet doesn't define this function there might be loss of functionality of the saveinstance. Although that would be very rare and weird
@@ -160,7 +160,7 @@ local sharedStrings: any = setmetatable({}, {
 local inheritedProperties = {}
 local defaultInstances = {}
 
-local function index(self: any, index_name: any): any
+local function index(self: any, index_name: string): any
 	return self[index_name]
 end
 
@@ -779,7 +779,7 @@ Attribute_Encoders = {
 	_packF32 = nil,
 	_packI16 = nil,
 	_makeVectorPacker = function(writeFunc: (buffer, number, any) -> (), elementSize: number)
-		return function(X: any, Y: any, Z: any?)
+		return function(X: number, Y: number, Z: number?)
 			local len = Z and (elementSize * 3) or (elementSize * 2)
 			local b = buffer.create(len)
 
@@ -1309,7 +1309,7 @@ local Binary_Encoders: { [string]: any } = {
 		return v.Value
 	end),
 
-	["Referent"] = function(sbuf: SBuf, vals: { any }, n: number, refs: any)
+	["Referent"] = function(sbuf: SBuf, vals: { Instance }, n: number, refs: { [any]: number })
 		writeRefPlane(sbuf, n, sbuf:allocRegion(4 * n), function(i)
 			local val = vals[i]
 			return (val and refs[val]) or -1
@@ -1566,7 +1566,7 @@ XML_Encoders = {
 	_normalizeRange = function(raw: any)
 		return raw ~= raw and "0" or raw -- Normally we should return "-nan(ind)" instead of "0" but this adds more compatibility
 	end,
-	_minMax = function(min: any, max: any, encoder: any)
+	_minMax = function(min: number, max: number, encoder: any)
 		return "<min>" .. encoder(min) .. "</min><max>" .. encoder(max) .. "</max>"
 	end,
 	_makeSequence = function(keypoint_handler: any)
@@ -1582,7 +1582,7 @@ XML_Encoders = {
 			return sequence
 		end
 	end,
-	_vector = function(X: any, Y: any, Z: any)
+	_vector = function(X: number, Y: number, Z: number)
 		local Value = "<X>" .. X .. "</X><Y>" .. Y .. "</Y>"
 
 		if Z then
@@ -1640,7 +1640,7 @@ XML_Encoders = {
 			+ math.floor(raw.B * 255)
 	end,
 	ColorSequence = nil,
-	ColorSequenceKeypoint = function(keypoint: any)
+	ColorSequenceKeypoint = function(keypoint: ColorSequenceKeypoint)
 		local _normalizeRange = XML_Encoders._normalizeRange
 
 		local color3 = keypoint.Value
@@ -1698,7 +1698,7 @@ XML_Encoders = {
 		return _normalizeRange(raw.Min) .. " " .. _normalizeRange(raw.Max) --[[.. " "]] -- ! This might be required for compatibility; _normalizeRange  is not needed here but it fixes the issue where "nan 10" value would reset to "0 0"
 	end,
 	NumberSequence = nil,
-	NumberSequenceKeypoint = function(keypoint: any)
+	NumberSequenceKeypoint = function(keypoint: NumberSequenceKeypoint)
 		local _normalizeRange = XML_Encoders._normalizeRange
 
 		return _normalizeRange(keypoint.Time)
@@ -1846,7 +1846,45 @@ do
 	XML_Encoders[encoderName] = XML_Encoders[redirectName]
 end
 
-local ClassList: any, FetchAPI: any
+type PropertyInfo = {
+	Name: string,
+	Category: string?,
+	ValueType: string,
+	Special: boolean?,
+	CanRead: boolean?,
+	Optional: boolean?,
+	Shadows: boolean?,
+	GHPFFailed: boolean?,
+	Fallback: any,
+	ErrNeedle: string?,
+	[string]: any,
+}
+type ClassInfo = { Superclass: string, Properties: { PropertyInfo }, [string]: any }
+
+type EntryInfo = {
+	tag: string,
+	class: string,
+	propClass: string,
+	override: any,
+	propsOnly: boolean?,
+	virtual: boolean,
+	parent: any,
+	[string]: any,
+}
+
+type SaveContext = {
+	entries: { [Instance]: EntryInfo },
+	classList: { [string]: { Instance } },
+	ordered: { Instance },
+	refs: { [any]: any },
+	instCount: number,
+	instTypeCount: number,
+	roots: any?,
+	mainRoots: any?,
+	[string]: any,
+}
+
+local ClassList: { [string]: ClassInfo }, FetchAPI: any
 local RiskyServicesDisabled: any
 do
 	local ClassPropertyExceptions = arrayToDict({
@@ -2230,7 +2268,7 @@ do
 
 				return table.concat(tags, "\0")
 			end,
-			-- SerializedOverrides = function(instance: any) -- Unused in live games?
+			-- SerializedOverrides = function(instance: Instance) -- Unused in live games?
 			-- 	local datamodeldiff = game:GetService("PackageService"):GetOverrides(instance) -- Doesn't exist in live games
 			-- 	local identities = datamodeldiff:GetIdentities()
 
@@ -2296,7 +2334,7 @@ do
 			-- end,
 		},
 		Path2D = {
-			PropertiesSerialize = function(instance: any)
+			PropertiesSerialize = function(instance: Path2D)
 				local control_points = instance:GetControlPoints()
 				local n = #control_points
 
@@ -2354,7 +2392,7 @@ do
 		-- 	end,
 		-- },
 		PlayerEmulatorService = {
-			SerializedEmulatedPolicyInfo = function(instance: any)
+			SerializedEmulatedPolicyInfo = function(instance: PlayerEmulatorService)
 				local EmulatedPolicyInfo = instance:GetEmulatedPolicyInfo()
 
 				if not next(EmulatedPolicyInfo) then
@@ -2365,7 +2403,7 @@ do
 			end,
 		},
 		StyleRule = {
-			PropertiesSerialize = function(instance: any)
+			PropertiesSerialize = function(instance: StyleRule)
 				local props = instance:GetProperties()
 
 				if not next(props) then
@@ -2374,7 +2412,7 @@ do
 
 				return AttributesSerialize(props)
 			end,
-			PropertyTransitionsSerialize = function(instance: any)
+			PropertyTransitionsSerialize = function(instance: StyleRule)
 				local transitions = instance:GetPropertyTransitions()
 
 				if not next(transitions) then
@@ -2385,7 +2423,7 @@ do
 			end,
 		},
 		StyleQuery = {
-			ConditionsSerialize = function(instance: any)
+			ConditionsSerialize = function(instance: StyleQuery)
 				local props = instance:GetConditions()
 
 				if not next(props) then
@@ -2396,18 +2434,18 @@ do
 			end,
 		},
 		FloatCurve = {
-			ValuesAndTimes = function(instance: any)
+			ValuesAndTimes = function(instance: FloatCurve)
 				return serializeFloatKeys(instance:GetKeys())
 			end,
 		},
 		HapticEffect = {
 			-- Same format as FloatCurve.ValuesAndTimes
-			WaveformData = function(instance: any)
+			WaveformData = function(instance: HapticEffect)
 				return serializeFloatKeys(instance:GetWaveformKeys())
 			end,
 		},
 		RotationCurve = {
-			ValuesAndTimes = function(instance: any)
+			ValuesAndTimes = function(instance: RotationCurve)
 				local keys = instance:GetKeys()
 
 				if #keys == 0 then
@@ -2448,7 +2486,7 @@ do
 			end,
 		},
 		ValueCurve = {
-			ValuesAndTimes = function(instance: any)
+			ValuesAndTimes = function(instance: ValueCurve)
 				local keys = instance:GetKeys()
 
 				if #keys == 0 then
@@ -2523,7 +2561,7 @@ do
 			end,
 		},
 		MarkerCurve = {
-			ValuesAndTimes = function(instance: any)
+			ValuesAndTimes = function(instance: MarkerCurve)
 				local markers = instance:GetMarkers()
 				local n = #markers
 
@@ -2556,7 +2594,7 @@ do
 			end,
 		},
 		AnimationNodeDefinition = {
-			InputPinData = function(instance: any)
+			InputPinData = function(instance: AnimationNodeDefinition)
 				local input_pins = instance:GetOrderedInputPinNames()
 
 				local n = #input_pins
@@ -2589,12 +2627,12 @@ do
 			end,
 		},
 		AnimationClip = {
-			GuidBinaryString = function(instance: any) -- RobloxScriptSecurity
+			GuidBinaryString = function(instance: AnimationClip) -- RobloxScriptSecurity
 				return encodeGuid(instance.Guid)
 			end,
 		},
 		AnimationRigData = {
-			label = function(instance: any)
+			label = function(instance: AnimationRigData)
 				local labels = instance:GetLabels() -- RobloxScriptSecurity
 				local n = #labels
 
@@ -2616,7 +2654,7 @@ do
 
 				return buffer.tostring(b)
 			end,
-			name = function(instance: any)
+			name = function(instance: AnimationRigData)
 				local names = instance:GetNames() -- RobloxScriptSecurity
 				local n = #names
 
@@ -2648,7 +2686,7 @@ do
 
 				return buffer.tostring(b)
 			end,
-			parent = function(instance: any)
+			parent = function(instance: AnimationRigData)
 				local parents = instance:GetParents() -- RobloxScriptSecurity
 				local n = #parents
 
@@ -2670,18 +2708,18 @@ do
 
 				return buffer.tostring(b)
 			end,
-			postTransform = function(instance: any)
+			postTransform = function(instance: AnimationRigData)
 				return TransformsSerialize(instance:GetPostTransforms()) -- RobloxScriptSecurity
 			end,
-			preTransform = function(instance: any)
+			preTransform = function(instance: AnimationRigData)
 				return TransformsSerialize(instance:GetPreTransforms()) -- RobloxScriptSecurity
 			end,
-			transform = function(instance: any)
+			transform = function(instance: AnimationRigData)
 				return TransformsSerialize(instance:GetTransforms()) -- RobloxScriptSecurity
 			end,
 		},
 		AudioDeviceInput = {
-			AccessList = function(instance: any) -- CanSave & CanLoad false
+			AccessList = function(instance: AudioDeviceInput) -- CanSave & CanLoad false
 				local userid_accesslist = instance:GetUserIdAccessList()
 
 				local n = #userid_accesslist
@@ -2704,18 +2742,18 @@ do
 			end,
 		},
 		AudioEmitter = {
-			AngleAttenuation = function(instance: any)
+			AngleAttenuation = function(instance: AudioEmitter)
 				return AttenuationSerialize(instance:GetAngleAttenuation())
 			end,
-			DistanceAttenuation = function(instance: any)
+			DistanceAttenuation = function(instance: AudioEmitter)
 				return AttenuationSerialize(instance:GetDistanceAttenuation())
 			end,
 		},
 		AudioListener = {
-			AngleAttenuation = function(instance: any)
+			AngleAttenuation = function(instance: AudioListener)
 				return AttenuationSerialize(instance:GetAngleAttenuation())
 			end,
-			DistanceAttenuation = function(instance: any)
+			DistanceAttenuation = function(instance: AudioListener)
 				return AttenuationSerialize(instance:GetDistanceAttenuation())
 			end,
 		},
@@ -2773,7 +2811,7 @@ do
 
 		Terrain = {
 			AcquisitionMethod = "LastUsedModificationMethod", -- ? Not sure, RobloxScriptSecurity
-			Materials = function(instance: any)
+			Materials = function(instance: Terrain)
 				local slots = {}
 				-- custom slots start at 2 (0/1 are Air and Water); the engine errors past its last slot
 				-- ("slotIndex is out of range"), so stop there instead of hardcoding the limit. The cap
@@ -2843,7 +2881,7 @@ do
 
 				return buffer.tostring(b)
 			end,
-			MaterialColors = function(instance: any)
+			MaterialColors = function(instance: Terrain)
 				-- TODO Use code below once GetFirstCustomMaterialSlotIndex & GetMaterialSlot are enabled
 				--[[
 				local colors = {}
@@ -2933,7 +2971,7 @@ do
 		},
 		TriangleMeshPart = {
 			FluidFidelityInternal = "FluidFidelity",
-			PhysicalConfigData = function(instance: any)
+			PhysicalConfigData = function(instance: TriangleMeshPart)
 				local blob = PHYSICAL_CONFIG_BY_CF[instance.CollisionFidelity]
 				if blob == nil then
 					blob = PHYSICAL_CONFIG_BY_CF[CF.Default]
@@ -2944,7 +2982,7 @@ do
 		MeshPart = {
 			InitialSize = "MeshSize",
 			MeshID = "MeshId",
-			-- VertexCount = function(instance: any) -- RobloxSecurity, Slow
+			-- VertexCount = function(instance: MeshPart) -- RobloxSecurity, Slow
 			-- 	if RiskyServicesDisabled.UGC then
 			-- 		return __BREAK
 			-- 	end
@@ -2977,7 +3015,7 @@ do
 		},
 		Humanoid = {
 			Health_XML = "Health",
-			InternalBodyScale = function(instance: any) -- RobloxScriptSecurity
+			InternalBodyScale = function(instance: Humanoid) -- RobloxScriptSecurity
 				-- X - BodyWidthScale
 				-- Y - BodyHeightScale
 				-- Z - BodyDepthScale
@@ -2989,7 +3027,7 @@ do
 
 				return instance:GetAccessoryHandleScale(a, Enum.BodyPartR15.RootPart)
 			end,
-			InternalHeadScale = function(instance: any) -- RobloxScriptSecurity
+			InternalHeadScale = function(instance: Humanoid) -- RobloxScriptSecurity
 				-- HeadScale
 				local a = instance.Parent and instance.Parent:FindFirstChild("Head")
 
@@ -2999,12 +3037,12 @@ do
 
 				return instance:GetAccessoryHandleScale(a, Enum.BodyPartR15.Head).X -- X, Y, Z seem to be always equal
 			end,
-			NetworkHumanoidState = function(instance: any) -- CanSave & CanLoad false
+			NetworkHumanoidState = function(instance: Humanoid) -- CanSave & CanLoad false
 				return instance:GetState()
 			end,
 		},
 		HumanoidDescription = {
-			AccessoryBlob = function(instance: any)
+			AccessoryBlob = function(instance: HumanoidDescription)
 				local blob = {}
 
 				for _, acc in instance:GetAccessories(false) do
@@ -3018,14 +3056,14 @@ do
 
 				return service.HttpService:JSONEncode(blob)
 			end,
-			EmotesDataInternal = function(instance: any)
+			EmotesDataInternal = function(instance: HumanoidDescription)
 				local emotes_data = ""
 				for name, ids in instance:GetEmotes() do
 					emotes_data ..= name .. "^" .. table.concat(ids, "^") .. "^\\"
 				end
 				return emotes_data
 			end,
-			EquippedEmotesDataInternal = function(instance: any)
+			EquippedEmotesDataInternal = function(instance: HumanoidDescription)
 				local equipped_emotes = instance:GetEquippedEmotes()
 				if #equipped_emotes == 0 then
 					return ""
@@ -3039,7 +3077,7 @@ do
 			end,
 		},
 		LocalizationTable = {
-			Contents = function(instance: any)
+			Contents = function(instance: LocalizationTable)
 				return instance:GetContents() --service.HttpService:JSONEncode(instance:GetEntries())
 			end,
 		},
@@ -3049,20 +3087,20 @@ do
 		},
 
 		Model = {
-			ModelMeshCFrame = function(instance: any)
+			ModelMeshCFrame = function(instance: Model)
 				return instance:GetModelCFrame() -- GetBoundingBox
 			end,
-			ModelMeshSize = function(instance: any)
+			ModelMeshSize = function(instance: Model)
 				return instance:GetExtentsSize() -- GetBoundingBox, GetModelSize
 			end,
-			Scale = function(instance: any) -- CanSave & CanLoad false
+			Scale = function(instance: Model) -- CanSave & CanLoad false
 				return instance:GetScale()
 			end,
-			ScaleFactor = function(instance: any)
+			ScaleFactor = function(instance: Model)
 				return instance:GetScale()
 			end,
 			WorldPivotData = function(instance: any)
-				local function approxEqual(a: any, b: any)
+				local function approxEqual(a: CFrame, b: CFrame)
 					local ac, bc = { a:GetComponents() }, { b:GetComponents() }
 					for i = 1, 12 do
 						if math.abs(ac[i] - bc[i]) > 1e-4 then
@@ -3110,31 +3148,31 @@ do
 			xmlRead_MaxDistance_3 = "RollOffMaxDistance", -- * Also MaxDistance
 		},
 		ViewportFrame = {
-			CameraCFrame = function(instance: any)
+			CameraCFrame = function(instance: ViewportFrame)
 				local CurrentCamera = instance.CurrentCamera
 
 				return CurrentCamera and CurrentCamera.CFrame or CFrame.identity
 			end,
-			CameraFieldOfView = function(instance: any)
+			CameraFieldOfView = function(instance: ViewportFrame)
 				local CurrentCamera = instance.CurrentCamera
 
 				return math.rad(CurrentCamera and CurrentCamera.FieldOfView or 70)
 			end,
 		},
 		WeldConstraint = {
-			CFrame0 = function(instance: any)
+			CFrame0 = function(instance: WeldConstraint)
 				local Part0, Part1 = instance.Part0, instance.Part1
 
 				return Part0 and Part1 and Part0.CFrame:ToObjectSpace(Part1.CFrame) or CFrame.identity
 			end,
-			CFrame1 = function(instance: any)
+			CFrame1 = function(instance: WeldConstraint)
 				local Part0, Part1 = instance.Part0, instance.Part1
 
 				return Part0 and Part1 and Part1.CFrame:ToObjectSpace(Part0.CFrame) or CFrame.identity
 			end,
 			Part0Internal = "Part0",
 			Part1Internal = "Part1",
-			State = function(instance: any)
+			State = function(instance: WeldConstraint)
 				return countBits(instance.Enabled, instance.Active)
 			end,
 		},
@@ -4525,7 +4563,7 @@ local function synsaveinstance(...: any): any
 	local SharedBinaryStrings = OPTIONS.SharedBinaryStrings
 
 	local predecompile
-	local ToSaveList: any, ldecompile: any, placename: any, elapse_t: any, SaveNotCreatableWillBeEnabled: any, RecoveredScripts: any, FlattenedInfo: any
+	local ToSaveList: { any }, ldecompile: (script: Instance) -> string, placename: string, elapse_t: number, SaveNotCreatableWillBeEnabled: boolean?, RecoveredScripts: { string }, FlattenedInfo: any
 
 	if OPTIONS.ReadMe then
 		RecoveredScripts = {}
@@ -4612,7 +4650,7 @@ local function synsaveinstance(...: any): any
 		local writers = ExecState["writers"] or {}
 		ExecState["writers"] = writers
 		local probed = false
-		local function writerWorks(key: string, f: any, calls: number)
+		local function writerWorks(key: string, f: (...any) -> ...any, calls: number)
 			if writers[key] ~= nil then
 				return writers[key]
 			end
@@ -4947,7 +4985,7 @@ local function synsaveinstance(...: any): any
 		return unpack(result)
 	end
 
-	local function makeTimeoutHandler(timeout: number, f: any, timeout_return: any?): (...any) -> ...any
+	local function makeTimeoutHandler(timeout: number, f: (...any) -> ...any, timeout_return: any?): (...any) -> ...any
 		if timeout < 0 then
 			return function(...)
 				return pcall(f, ...)
@@ -5023,12 +5061,12 @@ local function synsaveinstance(...: any): any
 		USSI.ScriptCache = ldeccache
 	end
 
-	local getbytecode: any
+	local getbytecode: (script: Instance) -> (boolean, string?)
 	if getscriptbytecode then
 		getbytecode = makeTimeoutHandler(OPTIONS.BytecodeTimeout, getscriptbytecode) -- ? Solara fix
 	end
 
-	local SaveBytecode: any
+	local SaveBytecode: (script: Instance) -> string?
 	if OPTIONS.SaveBytecode and getscriptbytecode then
 		SaveBytecode = function(script)
 			local s, bytecode = getbytecode(script)
@@ -5128,7 +5166,7 @@ local function synsaveinstance(...: any): any
 		local mainDecomp = makeTimeoutHandler(OPTIONS.DecompileTimeout, decompileFn, "Decompiler timed out")
 		local inflight = {}
 
-		local function decompileScript(script: any, decomp: any, bytecodeOf: any, quiet: any?): any
+		local function decompileScript(script: Instance, decomp: any, bytecodeOf: any, quiet: any?): any
 			local bytecode
 			if ScriptCache then
 				local s
@@ -5301,7 +5339,7 @@ local function synsaveinstance(...: any): any
 		return assetId or nil
 	end
 
-	local function loadTree(assetId: any): any
+	local function loadTree(assetId: number | string): any
 		local ok, loaded =
 			pcall(service.InsertService.LoadLocalAsset, service.InsertService, "rbxassetid://" .. assetId)
 		if not (ok and loaded) then
@@ -5313,7 +5351,7 @@ local function synsaveinstance(...: any): any
 		return { children = { [key] = root } }
 	end
 
-	local function sourceFromAsset(assetId: any, chain: any)
+	local function sourceFromAsset(assetId: number | string, chain: any)
 		local node = sourceAssetCache[assetId]
 		if node == nil then
 			node = loadTree(assetId)
@@ -5483,11 +5521,11 @@ local function synsaveinstance(...: any): any
 		return fix ~= nil and (valueType ~= "Instance" and valueType ~= fix)
 	end
 
-	local function nilIsValid(category, optional)
+	local function nilIsValid(category: string?, optional: boolean?)
 		return optional ~= nil or category == "Class"
 	end
 
-	local function filterPropVal(result, property, category, optional) -- ? raw == nil thanks to SerializedDefaultAttributes; "can't get value" - due to WriteOnly tag;  "Invalid value for enum " - "StreamingPauseMode" (old games probably) Roexec
+	local function filterPropVal(result: any, property: PropertyInfo, category: string?, optional: boolean?) -- ? raw == nil thanks to SerializedDefaultAttributes; "can't get value" - due to WriteOnly tag;  "Invalid value for enum " - "StreamingPauseMode" (old games probably) Roexec
 		if result == nil then
 			return not nilIsValid(category, optional)
 		end
@@ -5506,7 +5544,7 @@ local function synsaveinstance(...: any): any
 			needle = "Unable to get property " .. property.Name
 			property.ErrNeedle = needle
 		end
-		return string_find(result, needle) ~= nil
+		return string_find(result, needle :: string) ~= nil
 	end
 
 	local GHPDatatypeState = {}
@@ -5569,7 +5607,7 @@ local function synsaveinstance(...: any): any
 		end
 	end
 
-	local function readProperty(instance: Instance, property: any)
+	local function readProperty(instance: Instance, property: PropertyInfo)
 		local PropertyName, ValueType, CanRead, Special =
 			property.Name, property.ValueType, property.CanRead, property.Special
 
@@ -5744,8 +5782,8 @@ local function synsaveinstance(...: any): any
 	--   tag       -- written as the class name (XML). May be an unknown class.
 	--   class     -- the resolved, instantiable class (binary INST). Never unknown.
 	--   propClass -- whose property list to read (union rewrite points elsewhere)
-	local function collect(roots: any): any
-		local ctx: any = {
+	local function collect(roots: { Instance }): any
+		local ctx: SaveContext = {
 			entries = {},
 			classList = {},
 			ordered = {},
@@ -5765,7 +5803,7 @@ local function synsaveinstance(...: any): any
 
 		local deferred = {}
 
-		local function recur(instance: Instance, parent: any, ldIgnore: any, depth: number, anchor: any)
+		local function recur(instance: Instance, parent: Instance?, ldIgnore: (string | boolean)?, depth: number, anchor: Instance?)
 			if entries[instance] then
 				return -- already collected via another root
 			end
@@ -5928,7 +5966,7 @@ local function synsaveinstance(...: any): any
 
 	local pendingExtras = {}
 
-	local function register_extra(name: string, instanceOrTable: any?, saveProps: any?, customClassName: string?, source: any?)
+	local function register_extra(name: string, instanceOrTable: any?, saveProps: any?, customClassName: string?, source: (() -> string)?)
 		customClassName = customClassName or "Folder"
 		local properties = { Name = name, Source = source }
 		local extra: any = { customClassName = customClassName, properties = properties }
@@ -5964,7 +6002,7 @@ local function synsaveinstance(...: any): any
 		return extra
 	end
 
-	local function emitBinary(ctx: any): any
+	local function emitBinary(ctx: SaveContext): any
 		local function readAll(objs: any, prop: any): (any, number?)
 			local n = #objs
 			local vals = table.create(n)
@@ -6266,13 +6304,13 @@ local function synsaveinstance(...: any): any
 		return out
 	end
 
-	local function emitXML(ctx: any): any
+	local function emitXML(ctx: SaveContext): any
 		local chunks = table.create(1)
 		local savebuffer, savebuffer_size = {}, 1
 		local header = '<roblox version="4">'
 		local refs = ctx.refs
 
-		local function ReturnProperty(tag: any, propertyName: any, value: any)
+		local function ReturnProperty(tag: string, propertyName: string, value: any)
 			return "<" .. tag .. ' name="' .. propertyName .. '">' .. value .. "</" .. tag .. ">"
 		end
 
@@ -6281,7 +6319,7 @@ local function synsaveinstance(...: any): any
 			return value, tag or valueType
 		end
 
-		local function ReturnItem(className: any, instance: Instance)
+		local function ReturnItem(className: string, instance: Instance)
 			return '<Item class="' .. className .. '" referent="' .. refs[instance] .. '">'
 		end
 
@@ -6303,7 +6341,7 @@ local function synsaveinstance(...: any): any
 			yieldFrame()
 		end
 
-		local function save_hierarchy(hierarchy: any, ctx: any)
+		local function save_hierarchy(hierarchy: any, ctx: SaveContext)
 			local entries = ctx.entries
 
 			for _, instance in hierarchy do
@@ -6901,7 +6939,7 @@ local function synsaveinstance(...: any): any
 	end
 
 	local Connections = {}
-	local function Connect(event: any, func: any)
+	local function Connect(event: RBXScriptSignal, func: (...any) -> ())
 		table.insert(Connections, event:Connect(func))
 	end
 	local function Cleanup(aborted: boolean?)
@@ -6964,7 +7002,7 @@ local function synsaveinstance(...: any): any
 			local hookfunction = EXECUTOR_NAME ~= "Volt" and hookfunction
 
 			local done: { [any]: boolean } = {}
-			local function filterNkill(f: any)
+			local function filterNkill(f: (...any) -> ...any)
 				if not f then
 					return
 				end
