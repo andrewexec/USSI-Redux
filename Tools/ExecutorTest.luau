@@ -23,8 +23,6 @@ local function log(line)
 	print(line)
 end
 
--- Collect every warning and error the script prints while the tests run. Two sources:
--- the engine log, and the executor's own `warn`, which many executors keep out of the engine log.
 local function recordWarning(message)
 	if not seenWarnings[message] then
 		seenWarnings[message] = true
@@ -38,19 +36,40 @@ local warnConnection = LogService.MessageOut:Connect(function(message, messageTy
 	end
 end)
 
+local capturing = true
 local originalWarn = env.warn
-env.warn = function(...)
+local function capturingWarn(...)
 	local parts = table.pack(...)
 	for i = 1, parts.n do
 		parts[i] = tostring(parts[i])
 	end
-	recordWarning(table.concat(parts, " ", 1, parts.n))
+	if capturing then
+		recordWarning(table.concat(parts, " ", 1, parts.n))
+	end
 	return originalWarn(...)
 end
 
+local hookedInPlace = false
+if env.hookfunction and originalWarn then
+	local wrap = env.newcclosure or function(f)
+		return f
+	end
+	local ok, previous = pcall(env.hookfunction, originalWarn, wrap(capturingWarn))
+	if ok and type(previous) == "function" then
+		originalWarn = previous
+		hookedInPlace = true
+	end
+end
+if not hookedInPlace then
+	env.warn = capturingWarn
+end
+
 local function stopCapturing()
+	capturing = false
 	warnConnection:Disconnect()
-	env.warn = originalWarn
+	if not hookedInPlace then
+		env.warn = originalWarn
+	end
 end
 
 local function exists(path)
@@ -107,6 +126,16 @@ log("")
 
 local synsaveinstance
 local sourceOrigin
+
+test("warning capture works", function()
+	warn("USSI_PROBE_DIRECT")
+	pcall(function()
+		loadstring("warn('USSI_PROBE_CHUNK')")()
+	end)
+	local direct, chunk = seenWarnings["USSI_PROBE_DIRECT"] == true, seenWarnings["USSI_PROBE_CHUNK"] == true
+	return direct and chunk,
+		`direct {tostring(direct)}, loadstring chunk {tostring(chunk)}, via {hookedInPlace and "hookfunction" or "env.warn"}. If this fails, the DUPLICATE test below cannot be trusted`
+end)
 
 test("load saveinstance.luau", function()
 	local source
@@ -245,7 +274,6 @@ test('mode = "full" turns IgnoreDefaultProperties off', function()
 		return false, "one of the saves failed"
 	end
 	local detail = `default {#a}, set false {#b}, set true {#c}`
-	-- default must act like "set false", and "set true" must be smaller
 	return #a == #b and #c < #a, detail
 end)
 
@@ -289,7 +317,6 @@ local function readState()
 	return nil
 end
 
--- The skip text can be reworded, so look for its two stable parts instead of the whole sentence
 local function wasSkipped(data)
 	return data ~= nil and string.find(data, "-- Skipped:", 1, true) ~= nil
 		and string.find(data, "RetryCrashedScripts", 1, true) ~= nil
@@ -342,7 +369,6 @@ test("crash protection: a crashed script is skipped", function()
 	local keptAfterSave = afterSave and afterSave.crashedScripts and afterSave.crashedScripts[injectedKey] == true
 	local skipped = wasSkipped(data)
 
-	-- What the saved script's Source actually contains, to show why the skip text is missing
 	local snippet = "no output file"
 	if data then
 		local from = string.find(data, 'name="Source"', 1, true)
@@ -398,7 +424,9 @@ if #warningOrder > 0 then
 	log("")
 	log(`Warnings and errors printed during the run ({#warningOrder}, first 40):`)
 	for i = 1, math.min(#warningOrder, 40) do
-		log("  " .. string.sub(warningOrder[i], 1, 300))
+		if not string.find(warningOrder[i], "USSI_PROBE", 1, true) then
+			log("  " .. string.sub(warningOrder[i], 1, 300))
+		end
 	end
 end
 log("")
